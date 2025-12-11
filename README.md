@@ -7,7 +7,7 @@
     - Complete coverage of Zendesk API functionality
     - Tools for managing tickets, users, organizations, and more
     - Resources for accessing Zendesk API documentation
-    - Secure authentication with Zendesk API tokens
+    - Secure authentication with Zendesk API tokens or password
 
     ## Getting Started
 
@@ -25,9 +25,18 @@
        ```
     3. Create a `.env` file with your Zendesk credentials:
        ```
-       ZENDESK_SUBDOMAIN=your-subdomain
+       # Domain configuration (use one of the following):
+       ZENDESK_SUBDOMAIN=your-subdomain  # e.g., "mycompany" for mycompany.zendesk.com
+       # OR
+       ZENDESK_DOMAIN=your-domain        # e.g., "mycompany.zendesk.com" or "https://mycompany.zendesk.com/"
+
+       # Authentication
        ZENDESK_EMAIL=your-email@example.com
-       ZENDESK_API_TOKEN=your-api-token
+
+       # Credentials (use one of the following):
+       ZENDESK_API_TOKEN=your-api-token  # Recommended: API token authentication
+       # OR
+       ZENDESK_PASSWORD=your-password    # Password authentication
        ```
 
     ### Running the Server

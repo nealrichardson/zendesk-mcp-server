@@ -2,27 +2,40 @@ import axios from 'axios';
 
     class ZendeskClient {
       constructor() {
+        this.domain = process.env.ZENDESK_DOMAIN;
         this.subdomain = process.env.ZENDESK_SUBDOMAIN;
         this.email = process.env.ZENDESK_EMAIL;
         this.apiToken = process.env.ZENDESK_API_TOKEN;
-        
-        if (!this.subdomain || !this.email || !this.apiToken) {
-          console.warn('Zendesk credentials not found in environment variables. Please set ZENDESK_SUBDOMAIN, ZENDESK_EMAIL, and ZENDESK_API_TOKEN.');
+        this.password = process.env.ZENDESK_PASSWORD;
+
+        if ((!this.domain && !this.subdomain) || !this.email || (!this.apiToken && !this.password)) {
+          console.warn('Zendesk credentials not found in environment variables. Please set (ZENDESK_DOMAIN or ZENDESK_SUBDOMAIN), ZENDESK_EMAIL, and (ZENDESK_API_TOKEN or ZENDESK_PASSWORD).');
         }
       }
 
       getBaseUrl() {
+        if (this.domain) {
+          // Strip https:// prefix and trailing slash if present
+          let cleanDomain = this.domain.replace(/^https?:\/\//, '').replace(/\/$/, '');
+          return `https://${cleanDomain}/api/v2`;
+        }
         return `https://${this.subdomain}.zendesk.com/api/v2`;
       }
 
       getAuthHeader() {
-        const auth = Buffer.from(`${this.email}/token:${this.apiToken}`).toString('base64');
+        let authString;
+        if (this.apiToken) {
+          authString = `${this.email}/token:${this.apiToken}`;
+        } else {
+          authString = `${this.email}:${this.password}`;
+        }
+        const auth = Buffer.from(authString).toString('base64');
         return `Basic ${auth}`;
       }
 
       async request(method, endpoint, data = null, params = null) {
         try {
-          if (!this.subdomain || !this.email || !this.apiToken) {
+          if ((!this.domain && !this.subdomain) || !this.email || (!this.apiToken && !this.password)) {
             throw new Error('Zendesk credentials not configured. Please set environment variables.');
           }
 
