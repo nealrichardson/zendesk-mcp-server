@@ -80,7 +80,7 @@ Tools are organized by Zendesk domain:
 - `support.js` - Core support functionality
 - `talk.js` - Zendesk Talk statistics
 - `chat.js` - Zendesk Chat conversations
-- `attachments.js` - Ticket attachment retrieval and download
+- `attachments.js` - Ticket attachment retrieval, download to disk, and automatic extraction
 
 ## Adding New Tools
 
@@ -91,6 +91,43 @@ To add new Zendesk API functionality:
 3. Follow the tool pattern (name, description, schema, handler)
 4. Import and add to `allTools` array in `src/server.js`
 
+## Working with Attachments
+
+The attachment tools support downloading files from tickets and making them available for analysis:
+
+### Attachment Workflow
+
+1. **Get metadata** - Use `get_attachment(id)` to retrieve attachment details including the `content_url`
+2. **Download options:**
+   - `download_attachment(content_url)` - Returns base64-encoded data (for programmatic use)
+   - `download_attachment_to_disk(content_url, filename?)` - Saves to `/tmp/zendesk-attachments/` and returns file path
+   - `download_and_extract_attachment(content_url, filename?)` - Downloads and auto-extracts archives
+
+### Analyzing Downloaded Files
+
+Files downloaded to disk can be analyzed using standard file tools:
+- **Read** - View file contents
+- **Grep** - Search within files
+- **Glob** - Find files by pattern in extracted directories
+- **Bash** - Use command-line tools for further processing
+
+### Archive Extraction
+
+`download_and_extract_attachment` automatically detects and extracts:
+- Tarballs: `.tar`, `.tar.gz`, `.tgz`, `.tar.bz2`, `.tbz2`
+- Zip files: `.zip`
+
+Returns the extraction directory path where all files can be accessed like regular codebase files.
+
+### Typical Use Case
+
+```
+1. list_ticket_comments(ticketId) → Find comments with attachments
+2. get_attachment(attachmentId) → Get content_url
+3. download_and_extract_attachment(content_url) → Extract to /tmp/zendesk-attachments/extracted-xxx/
+4. Use Read/Grep/Glob to analyze extracted files
+```
+
 ## Key Implementation Details
 
 - This is an ES module project (`"type": "module"` in package.json)
@@ -98,3 +135,4 @@ To add new Zendesk API functionality:
 - All Zendesk API responses are returned as stringified JSON to the MCP client
 - The Zendesk client automatically wraps request bodies in the appropriate key (e.g., `{ ticket: data }`)
 - Authentication uses HTTP Basic Auth with either `email/token:api_token` or `email:password`
+- Attachments are downloaded to `/tmp/zendesk-attachments/` and persist for the session
