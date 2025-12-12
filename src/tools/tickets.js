@@ -147,14 +147,42 @@ import { z } from 'zod';
           try {
             await zendeskClient.deleteTicket(id);
             return {
-              content: [{ 
-                type: "text", 
+              content: [{
+                type: "text",
                 text: `Ticket ${id} deleted successfully!`
               }]
             };
           } catch (error) {
             return {
               content: [{ type: "text", text: `Error deleting ticket: ${error.message}` }],
+              isError: true
+            };
+          }
+        }
+      },
+      {
+        name: "list_ticket_comments",
+        description: "List all comments on a ticket. Comments include the description and all replies from agents and users.",
+        schema: {
+          ticket_id: z.number().describe("Ticket ID to get comments from"),
+          sort_order: z.enum(["asc", "desc"]).optional().describe("Sort order for comments (asc = oldest first, desc = newest first)")
+        },
+        handler: async ({ ticket_id, sort_order }) => {
+          try {
+            const params = {};
+            if (sort_order) {
+              params.sort_order = sort_order;
+            }
+            const result = await zendeskClient.listTicketComments(ticket_id, params);
+            return {
+              content: [{
+                type: "text",
+                text: JSON.stringify(result, null, 2)
+              }]
+            };
+          } catch (error) {
+            return {
+              content: [{ type: "text", text: `Error listing ticket comments: ${error.message}` }],
               isError: true
             };
           }
