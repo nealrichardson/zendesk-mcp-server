@@ -128,6 +128,45 @@ Returns the extraction directory path where all files can be accessed like regul
 4. Use Read/Grep/Glob to analyze extracted files
 ```
 
+## Optimizing API Responses
+
+The `list_ticket_comments` tool supports filtering to reduce response size and token usage:
+
+### Body Format Control
+
+By default, only `plain_body` is returned. Use `body_format` parameter to control:
+- `"plain"` (default) - Returns only plain_body
+- `"html"` - Returns only html_body
+- `"both"` - Returns all body formats (body, plain_body, html_body)
+
+### Metadata Filtering
+
+Set `include_metadata: false` (default) to exclude `metadata.system` fields like:
+- Client information
+- IP address
+- Geographic location (latitude/longitude)
+
+### Attachment Details
+
+Set `include_attachment_details: false` (default) to return minimal attachment info:
+- Only includes: id, file_name, content_url, content_type, size
+- Excludes: thumbnails, malware scan results, inline status, etc.
+
+### Example
+
+```javascript
+// Minimal response (default)
+list_ticket_comments(ticket_id: 123)
+
+// Full response with all details
+list_ticket_comments(
+  ticket_id: 123,
+  body_format: "both",
+  include_metadata: true,
+  include_attachment_details: true
+)
+```
+
 ## Key Implementation Details
 
 - This is an ES module project (`"type": "module"` in package.json)

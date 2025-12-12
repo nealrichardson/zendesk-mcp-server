@@ -162,18 +162,61 @@ import { z } from 'zod';
       },
       {
         name: "list_ticket_comments",
-        description: "List all comments on a ticket. Comments include the description and all replies from agents and users.",
+        description: "List all comments on a ticket. Comments include the description and all replies from agents and users. Supports filtering to reduce response size.",
         schema: {
           ticket_id: z.number().describe("Ticket ID to get comments from"),
-          sort_order: z.enum(["asc", "desc"]).optional().describe("Sort order for comments (asc = oldest first, desc = newest first)")
+          sort_order: z.enum(["asc", "desc"]).optional().describe("Sort order for comments (asc = oldest first, desc = newest first)"),
+          body_format: z.enum(["plain", "html", "both"]).optional().describe("Which body format to return (default: plain). 'plain' returns only plain_body, 'html' returns only html_body, 'both' returns all formats"),
+          include_metadata: z.boolean().optional().describe("Include metadata.system fields like client info, IP, location (default: false)"),
+          include_attachment_details: z.boolean().optional().describe("Include full attachment details like thumbnails, malware scans. If false, only returns id, file_name, content_url, content_type, size (default: false)")
         },
-        handler: async ({ ticket_id, sort_order }) => {
+        handler: async ({ ticket_id, sort_order, body_format = "plain", include_metadata = false, include_attachment_details = false }) => {
           try {
             const params = {};
             if (sort_order) {
               params.sort_order = sort_order;
             }
             const result = await zendeskClient.listTicketComments(ticket_id, params);
+
+            // Filter comments to reduce response size
+            if (result.comments) {
+              result.comments = result.comments.map(comment => {
+                const filtered = { ...comment };
+
+                // Filter body formats
+                if (body_format === "plain") {
+                  delete filtered.html_body;
+                  delete filtered.body; // Keep only plain_body
+                } else if (body_format === "html") {
+                  delete filtered.plain_body;
+                  delete filtered.body; // Keep only html_body
+                }
+                // if body_format === "both", keep all formats
+
+                // Filter metadata
+                if (!include_metadata && filtered.metadata?.system) {
+                  delete filtered.metadata.system;
+                  // If metadata is now empty, remove it entirely
+                  if (Object.keys(filtered.metadata).length === 0) {
+                    delete filtered.metadata;
+                  }
+                }
+
+                // Filter attachment details
+                if (!include_attachment_details && filtered.attachments) {
+                  filtered.attachments = filtered.attachments.map(att => ({
+                    id: att.id,
+                    file_name: att.file_name,
+                    content_url: att.content_url,
+                    content_type: att.content_type,
+                    size: att.size
+                  }));
+                }
+
+                return filtered;
+              });
+            }
+
             return {
               content: [{
                 type: "text",
