@@ -13,6 +13,7 @@ import { McpServer, ResourceTemplate } from '@modelcontextprotocol/sdk/server/mc
     import { supportTools } from './tools/support.js';
     import { talkTools } from './tools/talk.js';
     import { chatTools } from './tools/chat.js';
+    import { attachmentsTools } from './tools/attachments.js';
 
     // Create an MCP server for Zendesk API
     const server = new McpServer({
@@ -35,7 +36,8 @@ import { McpServer, ResourceTemplate } from '@modelcontextprotocol/sdk/server/mc
       ...helpCenterTools,
       ...supportTools,
       ...talkTools,
-      ...chatTools
+      ...chatTools,
+      ...attachmentsTools
     ];
 
     // Register each tool with the server

@@ -132,6 +132,10 @@
     ### Chat
     - `list_chats`: List Zendesk Chat conversations
 
+    ### Attachments
+    - `get_attachment`: Get attachment metadata by ID, including the download URL
+    - `download_attachment`: Download attachment content as base64-encoded data
+
     ## Available Resources
 
     - `zendesk://docs/{section}`: Access documentation for different sections of the Zendesk API

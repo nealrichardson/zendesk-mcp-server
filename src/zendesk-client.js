@@ -265,6 +265,37 @@ import axios from 'axios';
       async listChats(params) {
         return this.request('GET', '/chats.json', null, params);
       }
+
+      // Attachments
+      async getAttachment(id) {
+        return this.request('GET', `/attachments/${id}.json`);
+      }
+
+      async downloadAttachment(contentUrl) {
+        try {
+          const headers = {
+            'Authorization': this.getAuthHeader()
+          };
+
+          const response = await axios({
+            method: 'GET',
+            url: contentUrl,
+            headers,
+            responseType: 'arraybuffer'
+          });
+
+          return {
+            data: Buffer.from(response.data).toString('base64'),
+            contentType: response.headers['content-type'],
+            size: response.data.byteLength
+          };
+        } catch (error) {
+          if (error.response) {
+            throw new Error(`Zendesk API Error: ${error.response.status} - ${JSON.stringify(error.response.data)}`);
+          }
+          throw error;
+        }
+      }
     }
 
     export const zendeskClient = new ZendeskClient();
