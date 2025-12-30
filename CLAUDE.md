@@ -6,21 +6,31 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 This is a Model Context Protocol (MCP) server that provides comprehensive access to the Zendesk API. It exposes Zendesk functionality as MCP tools and resources for AI assistants to interact with Zendesk Support, Talk, Chat, and Guide products.
 
+**This repository contains two implementations:**
+- **JavaScript** (`src/`) - Original implementation, stdio transport only
+- **Python** (`python/`) - Full implementation with stdio and HTTP/SSE transports
+
 ## Development Commands
 
-### Running the Server
-- `npm start` - Start the MCP server
+### JavaScript Server
+- `npm start` - Start the MCP server (stdio)
 - `npm run dev` - Start with auto-restart (uses Node's --watch flag)
 - `npm run inspect` - Test the server with MCP Inspector
 
+### Python Server
+- `cd python && uv run python -m zendesk_mcp` - Start with stdio transport
+- `cd python && uv run python -m zendesk_mcp --http` - Start with HTTP/SSE transport
+- `cd python && uv run python -m zendesk_mcp --http --port 3000` - Custom port
+
 ### Configuration
-The server requires environment variables in a `.env` file:
+Both servers use the same `.env` file with these environment variables:
 - Domain: Either `ZENDESK_SUBDOMAIN` (e.g., "mycompany") or `ZENDESK_DOMAIN` (e.g., "mycompany.zendesk.com")
 - Authentication: `ZENDESK_EMAIL` plus either `ZENDESK_API_TOKEN` (recommended) or `ZENDESK_PASSWORD`
+- Python-only: `MCP_TRANSPORT=stdio|http`, `MCP_HTTP_HOST`, `MCP_HTTP_PORT`
 
 ## Architecture
 
-### Core Components
+### JavaScript Implementation (`src/`)
 
 **Entry Point (`src/index.js`)**
 - Loads environment variables via dotenv
@@ -175,3 +185,51 @@ list_ticket_comments(
 - The Zendesk client automatically wraps request bodies in the appropriate key (e.g., `{ ticket: data }`)
 - Authentication uses HTTP Basic Auth with either `email/token:api_token` or `email:password`
 - Attachments are downloaded to `/tmp/zendesk-attachments/` and persist for the session
+
+### Python Implementation (`python/`)
+
+**Entry Point (`python/zendesk_mcp/__main__.py` and `server.py`)**
+- Loads environment variables via python-dotenv
+- Supports both stdio and HTTP/SSE transports
+- CLI argument `--http` enables HTTP mode
+
+**MCP Server (`python/zendesk_mcp/server.py`)**
+- Uses the official `mcp` Python SDK
+- Creates Server instance and registers all tools
+- For HTTP mode: Uses Starlette with SSE transport
+- Endpoints: `GET /sse` (SSE stream), `POST /messages` (client messages)
+
+**Zendesk Client (`python/zendesk_mcp/zendesk_client.py`)**
+- Async client using httpx
+- Same method-per-endpoint pattern as JavaScript
+- Singleton instance shared across all tools
+
+**Tool Modules (`python/zendesk_mcp/tools/*.py`)**
+- Each module has a `register_*_tools(server, client)` function
+- Tools use `@server.tool()` decorator
+- Parameters use Python type hints for validation
+- Docstrings provide parameter descriptions
+
+```python
+# Python tool pattern
+@server.tool()
+async def list_tickets(
+    page: int | None = None,
+    per_page: int | None = None,
+) -> str:
+    """List tickets in Zendesk.
+
+    Args:
+        page: Page number for pagination
+        per_page: Number of tickets per page (max 100)
+    """
+    result = await client.list_tickets({"page": page, "per_page": per_page})
+    return json.dumps(result, indent=2)
+```
+
+## Adding New Tools (Python)
+
+1. Add the API method to `ZendeskClient` in `python/zendesk_mcp/zendesk_client.py`
+2. Create or update a tool module in `python/zendesk_mcp/tools/`
+3. Add `@server.tool()` decorated async function
+4. Import and call `register_*_tools()` in `server.py`
