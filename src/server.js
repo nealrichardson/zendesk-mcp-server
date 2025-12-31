@@ -15,6 +15,9 @@ import { McpServer, ResourceTemplate } from '@modelcontextprotocol/sdk/server/mc
     import { chatTools } from './tools/chat.js';
     import { attachmentsTools } from './tools/attachments.js';
 
+    // Check if write tools (create/update/delete) should be enabled
+    const writeEnabled = process.env.ZENDESK_WRITE_ENABLED?.toLowerCase() === 'true';
+
     // Create an MCP server for Zendesk API
     const server = new McpServer({
       name: "Zendesk API",
@@ -40,8 +43,12 @@ import { McpServer, ResourceTemplate } from '@modelcontextprotocol/sdk/server/mc
       ...attachmentsTools
     ];
 
+    // Filter out write tools if not enabled
+    const isWriteTool = (name) => name.startsWith('create_') || name.startsWith('update_') || name.startsWith('delete_');
+    const enabledTools = writeEnabled ? allTools : allTools.filter(tool => !isWriteTool(tool.name));
+
     // Register each tool with the server
-    allTools.forEach(tool => {
+    enabledTools.forEach(tool => {
       server.tool(
         tool.name,
         tool.schema,

@@ -8,8 +8,14 @@ from mcp.server.fastmcp import FastMCP
 from zendesk_mcp.zendesk_client import ZendeskClient
 
 
-def register_users_tools(mcp: FastMCP, client: ZendeskClient) -> None:
+def register_users_tools(mcp: FastMCP, client: ZendeskClient, enable_write_tools: bool = False) -> None:
     """Register user-related tools with the MCP server."""
+
+    def write_tool(func):
+        """Only register as a tool if write mode is enabled."""
+        if enable_write_tools:
+            return mcp.tool()(func)
+        return func
 
     @mcp.tool()
     async def list_users(
@@ -44,7 +50,7 @@ def register_users_tools(mcp: FastMCP, client: ZendeskClient) -> None:
         except Exception as e:
             return f"Error getting user: {e}"
 
-    @mcp.tool()
+    @write_tool
     async def create_user(
         name: str,
         email: str,
@@ -83,7 +89,7 @@ def register_users_tools(mcp: FastMCP, client: ZendeskClient) -> None:
         except Exception as e:
             return f"Error creating user: {e}"
 
-    @mcp.tool()
+    @write_tool
     async def update_user(
         id: int,
         name: str | None = None,
@@ -128,7 +134,7 @@ def register_users_tools(mcp: FastMCP, client: ZendeskClient) -> None:
         except Exception as e:
             return f"Error updating user: {e}"
 
-    @mcp.tool()
+    @write_tool
     async def delete_user(id: int) -> str:
         """Delete a user.
 

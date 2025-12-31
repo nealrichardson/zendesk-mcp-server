@@ -8,8 +8,14 @@ from mcp.server.fastmcp import FastMCP
 from zendesk_mcp.zendesk_client import ZendeskClient
 
 
-def register_help_center_tools(mcp: FastMCP, client: ZendeskClient) -> None:
+def register_help_center_tools(mcp: FastMCP, client: ZendeskClient, enable_write_tools: bool = False) -> None:
     """Register help center-related tools with the MCP server."""
+
+    def write_tool(func):
+        """Only register as a tool if write mode is enabled."""
+        if enable_write_tools:
+            return mcp.tool()(func)
+        return func
 
     @mcp.tool()
     async def list_articles(
@@ -51,7 +57,7 @@ def register_help_center_tools(mcp: FastMCP, client: ZendeskClient) -> None:
         except Exception as e:
             return f"Error getting article: {e}"
 
-    @mcp.tool()
+    @write_tool
     async def create_article(
         title: str,
         body: str,
@@ -92,7 +98,7 @@ def register_help_center_tools(mcp: FastMCP, client: ZendeskClient) -> None:
         except Exception as e:
             return f"Error creating article: {e}"
 
-    @mcp.tool()
+    @write_tool
     async def update_article(
         id: int,
         title: str | None = None,
@@ -137,7 +143,7 @@ def register_help_center_tools(mcp: FastMCP, client: ZendeskClient) -> None:
         except Exception as e:
             return f"Error updating article: {e}"
 
-    @mcp.tool()
+    @write_tool
     async def delete_article(id: int) -> str:
         """Delete a Help Center article.
 

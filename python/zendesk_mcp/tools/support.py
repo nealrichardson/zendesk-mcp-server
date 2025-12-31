@@ -5,7 +5,7 @@ from mcp.server.fastmcp import FastMCP
 from zendesk_mcp.zendesk_client import ZendeskClient
 
 
-def register_support_tools(mcp: FastMCP, client: ZendeskClient) -> None:
+def register_support_tools(mcp: FastMCP, client: ZendeskClient, enable_write_tools: bool = False) -> None:
     """Register support-related tools with the MCP server."""
 
     @mcp.tool()

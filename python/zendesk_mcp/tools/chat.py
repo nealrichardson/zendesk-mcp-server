@@ -7,7 +7,7 @@ from mcp.server.fastmcp import FastMCP
 from zendesk_mcp.zendesk_client import ZendeskClient
 
 
-def register_chat_tools(mcp: FastMCP, client: ZendeskClient) -> None:
+def register_chat_tools(mcp: FastMCP, client: ZendeskClient, enable_write_tools: bool = False) -> None:
     """Register chat-related tools with the MCP server."""
 
     @mcp.tool()

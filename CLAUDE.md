@@ -26,7 +26,19 @@ This is a Model Context Protocol (MCP) server that provides comprehensive access
 Both servers use the same `.env` file with these environment variables:
 - Domain: Either `ZENDESK_SUBDOMAIN` (e.g., "mycompany") or `ZENDESK_DOMAIN` (e.g., "mycompany.zendesk.com")
 - Authentication: `ZENDESK_EMAIL` plus either `ZENDESK_API_TOKEN` (recommended) or `ZENDESK_PASSWORD`
+- Write mode: `ZENDESK_WRITE_ENABLED=true` to enable create/update/delete tools (default: false, read-only)
 - Python-only: `MCP_TRANSPORT=stdio|http`, `MCP_HTTP_HOST`, `MCP_HTTP_PORT`
+
+### Read-Only vs Write Mode
+
+By default, the server runs in **read-only mode** and only exposes tools for listing and retrieving data (e.g., `list_tickets`, `get_user`, `search`). Write tools (`create_*`, `update_*`, `delete_*`) are disabled.
+
+To enable write operations, set `ZENDESK_WRITE_ENABLED=true` in your `.env` file. This adds tools for:
+- Creating tickets, users, organizations, groups, macros, views, triggers, automations, and articles
+- Updating existing records
+- Deleting records
+
+This design allows safe exploration of Zendesk data without risk of accidental modifications.
 
 ## Architecture
 
@@ -205,10 +217,11 @@ list_ticket_comments(
 - Singleton instance shared across all tools
 
 **Tool Modules (`python/zendesk_mcp/tools/*.py`)**
-- Each module has a `register_*_tools(server, client)` function
+- Each module has a `register_*_tools(server, client, enable_write_tools)` function
 - Tools use `@server.tool()` decorator
 - Parameters use Python type hints for validation
 - Docstrings provide parameter descriptions
+- Write tools (create/update/delete) are conditionally registered based on `enable_write_tools`
 
 ```python
 # Python tool pattern

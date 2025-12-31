@@ -8,8 +8,14 @@ from mcp.server.fastmcp import FastMCP
 from zendesk_mcp.zendesk_client import ZendeskClient
 
 
-def register_groups_tools(mcp: FastMCP, client: ZendeskClient) -> None:
+def register_groups_tools(mcp: FastMCP, client: ZendeskClient, enable_write_tools: bool = False) -> None:
     """Register group-related tools with the MCP server."""
+
+    def write_tool(func):
+        """Only register as a tool if write mode is enabled."""
+        if enable_write_tools:
+            return mcp.tool()(func)
+        return func
 
     @mcp.tool()
     async def list_groups(
@@ -42,7 +48,7 @@ def register_groups_tools(mcp: FastMCP, client: ZendeskClient) -> None:
         except Exception as e:
             return f"Error getting group: {e}"
 
-    @mcp.tool()
+    @write_tool
     async def create_group(
         name: str,
         description: str | None = None,
@@ -63,7 +69,7 @@ def register_groups_tools(mcp: FastMCP, client: ZendeskClient) -> None:
         except Exception as e:
             return f"Error creating group: {e}"
 
-    @mcp.tool()
+    @write_tool
     async def update_group(
         id: int,
         name: str | None = None,
@@ -88,7 +94,7 @@ def register_groups_tools(mcp: FastMCP, client: ZendeskClient) -> None:
         except Exception as e:
             return f"Error updating group: {e}"
 
-    @mcp.tool()
+    @write_tool
     async def delete_group(id: int) -> str:
         """Delete a group.
 

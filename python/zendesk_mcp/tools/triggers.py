@@ -8,8 +8,14 @@ from mcp.server.fastmcp import FastMCP
 from zendesk_mcp.zendesk_client import ZendeskClient
 
 
-def register_triggers_tools(mcp: FastMCP, client: ZendeskClient) -> None:
+def register_triggers_tools(mcp: FastMCP, client: ZendeskClient, enable_write_tools: bool = False) -> None:
     """Register trigger-related tools with the MCP server."""
+
+    def write_tool(func):
+        """Only register as a tool if write mode is enabled."""
+        if enable_write_tools:
+            return mcp.tool()(func)
+        return func
 
     @mcp.tool()
     async def list_triggers(
@@ -42,7 +48,7 @@ def register_triggers_tools(mcp: FastMCP, client: ZendeskClient) -> None:
         except Exception as e:
             return f"Error getting trigger: {e}"
 
-    @mcp.tool()
+    @write_tool
     async def create_trigger(
         title: str,
         conditions: dict[str, Any],
@@ -71,7 +77,7 @@ def register_triggers_tools(mcp: FastMCP, client: ZendeskClient) -> None:
         except Exception as e:
             return f"Error creating trigger: {e}"
 
-    @mcp.tool()
+    @write_tool
     async def update_trigger(
         id: int,
         title: str | None = None,
@@ -104,7 +110,7 @@ def register_triggers_tools(mcp: FastMCP, client: ZendeskClient) -> None:
         except Exception as e:
             return f"Error updating trigger: {e}"
 
-    @mcp.tool()
+    @write_tool
     async def delete_trigger(id: int) -> str:
         """Delete a trigger.
 

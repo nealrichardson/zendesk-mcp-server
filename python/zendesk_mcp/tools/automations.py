@@ -8,8 +8,14 @@ from mcp.server.fastmcp import FastMCP
 from zendesk_mcp.zendesk_client import ZendeskClient
 
 
-def register_automations_tools(mcp: FastMCP, client: ZendeskClient) -> None:
+def register_automations_tools(mcp: FastMCP, client: ZendeskClient, enable_write_tools: bool = False) -> None:
     """Register automation-related tools with the MCP server."""
+
+    def write_tool(func):
+        """Only register as a tool if write mode is enabled."""
+        if enable_write_tools:
+            return mcp.tool()(func)
+        return func
 
     @mcp.tool()
     async def list_automations(
@@ -42,7 +48,7 @@ def register_automations_tools(mcp: FastMCP, client: ZendeskClient) -> None:
         except Exception as e:
             return f"Error getting automation: {e}"
 
-    @mcp.tool()
+    @write_tool
     async def create_automation(
         title: str,
         conditions: dict[str, Any],
@@ -71,7 +77,7 @@ def register_automations_tools(mcp: FastMCP, client: ZendeskClient) -> None:
         except Exception as e:
             return f"Error creating automation: {e}"
 
-    @mcp.tool()
+    @write_tool
     async def update_automation(
         id: int,
         title: str | None = None,
@@ -104,7 +110,7 @@ def register_automations_tools(mcp: FastMCP, client: ZendeskClient) -> None:
         except Exception as e:
             return f"Error updating automation: {e}"
 
-    @mcp.tool()
+    @write_tool
     async def delete_automation(id: int) -> str:
         """Delete an automation.
 

@@ -31,24 +31,27 @@ from zendesk_mcp.tools import (
 # Load environment variables
 load_dotenv()
 
+# Check if write tools (create/update/delete) should be enabled
+write_enabled = os.getenv("ZENDESK_WRITE_ENABLED", "").lower() == "true"
+
 # Create the FastMCP server instance
 mcp = FastMCP("zendesk-mcp")
 
 # Register all tools
-register_tickets_tools(mcp, zendesk_client)
-register_users_tools(mcp, zendesk_client)
-register_organizations_tools(mcp, zendesk_client)
-register_groups_tools(mcp, zendesk_client)
-register_macros_tools(mcp, zendesk_client)
-register_views_tools(mcp, zendesk_client)
-register_triggers_tools(mcp, zendesk_client)
-register_automations_tools(mcp, zendesk_client)
-register_search_tools(mcp, zendesk_client)
-register_help_center_tools(mcp, zendesk_client)
-register_support_tools(mcp, zendesk_client)
-register_talk_tools(mcp, zendesk_client)
-register_chat_tools(mcp, zendesk_client)
-register_attachments_tools(mcp, zendesk_client)
+register_tickets_tools(mcp, zendesk_client, write_enabled)
+register_users_tools(mcp, zendesk_client, write_enabled)
+register_organizations_tools(mcp, zendesk_client, write_enabled)
+register_groups_tools(mcp, zendesk_client, write_enabled)
+register_macros_tools(mcp, zendesk_client, write_enabled)
+register_views_tools(mcp, zendesk_client, write_enabled)
+register_triggers_tools(mcp, zendesk_client, write_enabled)
+register_automations_tools(mcp, zendesk_client, write_enabled)
+register_search_tools(mcp, zendesk_client, write_enabled)
+register_help_center_tools(mcp, zendesk_client, write_enabled)
+register_support_tools(mcp, zendesk_client, write_enabled)
+register_talk_tools(mcp, zendesk_client, write_enabled)
+register_chat_tools(mcp, zendesk_client, write_enabled)
+register_attachments_tools(mcp, zendesk_client, write_enabled)
 
 
 # Landing page route
@@ -58,7 +61,19 @@ async def landing_page(request: Request) -> HTMLResponse:
     # Get list of tools for display
     tools = await mcp.list_tools()
     tools_by_category = {
-        "Tickets": [t for t in tools if t.name.startswith(("list_ticket", "get_ticket", "create_ticket", "update_ticket", "delete_ticket"))],
+        "Tickets": [
+            t
+            for t in tools
+            if t.name.startswith(
+                (
+                    "list_ticket",
+                    "get_ticket",
+                    "create_ticket",
+                    "update_ticket",
+                    "delete_ticket",
+                )
+            )
+        ],
         "Users": [t for t in tools if "user" in t.name],
         "Organizations": [t for t in tools if "organization" in t.name],
         "Groups": [t for t in tools if "group" in t.name],
@@ -93,6 +108,24 @@ async def landing_page(request: Request) -> HTMLResponse:
     # Build the base URL
     base_url = f"{forwarded_proto}://{forwarded_host}{current_path}"
     sse_url = f"{base_url}/sse"
+
+    # Mode indicator
+    if write_enabled:
+        mode_badge = '<span class="mode-badge mode-write">Write Mode Enabled</span>'
+        mode_description = """
+        <p>This server is running in <strong>write mode</strong>. Tools for creating, updating, and
+        deleting records are available.</p>
+        <p>To switch to read-only mode, set <code>ZENDESK_WRITE_ENABLED=false</code> (or remove it)
+        in your environment and restart the server.</p>
+        """
+    else:
+        mode_badge = '<span class="mode-badge mode-readonly">Read-Only Mode</span>'
+        mode_description = """
+        <p>This server is running in <strong>read-only mode</strong>. Only tools for listing and
+        retrieving data are available. Create, update, and delete operations are disabled.</p>
+        <p>To enable write operations, set <code>ZENDESK_WRITE_ENABLED=true</code> in your
+        environment and restart the server.</p>
+        """
 
     html = f"""
     <!DOCTYPE html>
@@ -133,6 +166,32 @@ async def landing_page(request: Request) -> HTMLResponse:
                 border-left: 4px solid #0066cc;
             }}
             .tools-section {{ margin-top: 2rem; }}
+            .mode-badge {{
+                display: inline-block;
+                padding: 0.3rem 0.8rem;
+                border-radius: 4px;
+                font-size: 0.9em;
+                font-weight: 600;
+                margin-left: 1rem;
+                vertical-align: middle;
+            }}
+            .mode-readonly {{
+                background: #e8f5e9;
+                color: #2e7d32;
+                border: 1px solid #a5d6a7;
+            }}
+            .mode-write {{
+                background: #fff3e0;
+                color: #e65100;
+                border: 1px solid #ffcc80;
+            }}
+            .mode-info {{
+                background: #f5f5f5;
+                padding: 1rem;
+                border-radius: 5px;
+                margin: 1rem 0;
+                border-left: 4px solid #9e9e9e;
+            }}
         </style>
     </head>
     <body>
@@ -186,7 +245,12 @@ async def landing_page(request: Request) -> HTMLResponse:
   }}
 }}</pre>
 
-        <h2 class="tools-section">Available Tools ({len(tools)} total)</h2>
+        <h2 class="tools-section">Available Tools ({len(tools)} total) {mode_badge}</h2>
+
+        <div class="mode-info">
+            {mode_description}
+        </div>
+
         {tools_html}
 
         <hr style="margin-top: 3rem;">
