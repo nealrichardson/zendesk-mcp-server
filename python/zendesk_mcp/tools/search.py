@@ -2,15 +2,15 @@
 
 import json
 
-from mcp.server import Server
+from mcp.server.fastmcp import FastMCP
 
 from zendesk_mcp.zendesk_client import ZendeskClient
 
 
-def register_search_tools(server: Server, client: ZendeskClient) -> None:
+def register_search_tools(mcp: FastMCP, client: ZendeskClient) -> None:
     """Register search-related tools with the MCP server."""
 
-    @server.tool()
+    @mcp.tool()
     async def search(
         query: str,
         sort_by: str | None = None,

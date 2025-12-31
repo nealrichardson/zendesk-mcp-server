@@ -3,15 +3,15 @@
 import json
 from typing import Any
 
-from mcp.server import Server
+from mcp.server.fastmcp import FastMCP
 
 from zendesk_mcp.zendesk_client import ZendeskClient
 
 
-def register_triggers_tools(server: Server, client: ZendeskClient) -> None:
+def register_triggers_tools(mcp: FastMCP, client: ZendeskClient) -> None:
     """Register trigger-related tools with the MCP server."""
 
-    @server.tool()
+    @mcp.tool()
     async def list_triggers(
         page: int | None = None,
         per_page: int | None = None,
@@ -29,7 +29,7 @@ def register_triggers_tools(server: Server, client: ZendeskClient) -> None:
         except Exception as e:
             return f"Error listing triggers: {e}"
 
-    @server.tool()
+    @mcp.tool()
     async def get_trigger(id: int) -> str:
         """Get a specific trigger by ID.
 
@@ -42,7 +42,7 @@ def register_triggers_tools(server: Server, client: ZendeskClient) -> None:
         except Exception as e:
             return f"Error getting trigger: {e}"
 
-    @server.tool()
+    @mcp.tool()
     async def create_trigger(
         title: str,
         conditions: dict[str, Any],
@@ -71,7 +71,7 @@ def register_triggers_tools(server: Server, client: ZendeskClient) -> None:
         except Exception as e:
             return f"Error creating trigger: {e}"
 
-    @server.tool()
+    @mcp.tool()
     async def update_trigger(
         id: int,
         title: str | None = None,
@@ -104,7 +104,7 @@ def register_triggers_tools(server: Server, client: ZendeskClient) -> None:
         except Exception as e:
             return f"Error updating trigger: {e}"
 
-    @server.tool()
+    @mcp.tool()
     async def delete_trigger(id: int) -> str:
         """Delete a trigger.
 

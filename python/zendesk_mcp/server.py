@@ -6,8 +6,9 @@ import os
 import sys
 
 from dotenv import load_dotenv
-from mcp.server import Server
-from mcp.server.stdio import stdio_server
+from mcp.server.fastmcp import FastMCP
+from starlette.requests import Request
+from starlette.responses import HTMLResponse
 
 from zendesk_mcp.zendesk_client import zendesk_client
 from zendesk_mcp.tools import (
@@ -27,65 +28,189 @@ from zendesk_mcp.tools import (
     register_attachments_tools,
 )
 
+# Load environment variables
+load_dotenv()
 
-def create_server() -> Server:
-    """Create and configure the MCP server with all tools."""
-    server = Server("zendesk-mcp")
+# Create the FastMCP server instance
+mcp = FastMCP("zendesk-mcp")
 
-    # Register all tools
-    register_tickets_tools(server, zendesk_client)
-    register_users_tools(server, zendesk_client)
-    register_organizations_tools(server, zendesk_client)
-    register_groups_tools(server, zendesk_client)
-    register_macros_tools(server, zendesk_client)
-    register_views_tools(server, zendesk_client)
-    register_triggers_tools(server, zendesk_client)
-    register_automations_tools(server, zendesk_client)
-    register_search_tools(server, zendesk_client)
-    register_help_center_tools(server, zendesk_client)
-    register_support_tools(server, zendesk_client)
-    register_talk_tools(server, zendesk_client)
-    register_chat_tools(server, zendesk_client)
-    register_attachments_tools(server, zendesk_client)
+# Register all tools
+register_tickets_tools(mcp, zendesk_client)
+register_users_tools(mcp, zendesk_client)
+register_organizations_tools(mcp, zendesk_client)
+register_groups_tools(mcp, zendesk_client)
+register_macros_tools(mcp, zendesk_client)
+register_views_tools(mcp, zendesk_client)
+register_triggers_tools(mcp, zendesk_client)
+register_automations_tools(mcp, zendesk_client)
+register_search_tools(mcp, zendesk_client)
+register_help_center_tools(mcp, zendesk_client)
+register_support_tools(mcp, zendesk_client)
+register_talk_tools(mcp, zendesk_client)
+register_chat_tools(mcp, zendesk_client)
+register_attachments_tools(mcp, zendesk_client)
 
-    return server
+
+# Landing page route
+@mcp.custom_route("/", methods=["GET"])
+async def landing_page(request: Request) -> HTMLResponse:
+    """Serve a landing page with server info and setup instructions."""
+    # Get list of tools for display
+    tools = await mcp.list_tools()
+    tools_by_category = {
+        "Tickets": [t for t in tools if t.name.startswith(("list_ticket", "get_ticket", "create_ticket", "update_ticket", "delete_ticket"))],
+        "Users": [t for t in tools if "user" in t.name],
+        "Organizations": [t for t in tools if "organization" in t.name],
+        "Groups": [t for t in tools if "group" in t.name],
+        "Macros": [t for t in tools if "macro" in t.name],
+        "Views": [t for t in tools if "view" in t.name],
+        "Triggers": [t for t in tools if "trigger" in t.name],
+        "Automations": [t for t in tools if "automation" in t.name],
+        "Search": [t for t in tools if t.name == "search"],
+        "Help Center": [t for t in tools if "article" in t.name],
+        "Talk": [t for t in tools if "talk" in t.name],
+        "Chat": [t for t in tools if "chat" in t.name],
+        "Attachments": [t for t in tools if "attachment" in t.name],
+        "Other": [t for t in tools if t.name == "support_info"],
+    }
+
+    tools_html = ""
+    for category, category_tools in tools_by_category.items():
+        if category_tools:
+            tools_html += f"<h3>{category}</h3><ul>"
+            for tool in category_tools:
+                tools_html += f"<li><code>{tool.name}</code> - {tool.description or 'No description'}</li>"
+            tools_html += "</ul>"
+
+    # Build base URL, accounting for proxy path prefixes
+    # Check for X-Forwarded headers first (common with proxies)
+    forwarded_proto = request.headers.get("x-forwarded-proto", request.url.scheme)
+    forwarded_host = request.headers.get("x-forwarded-host", request.url.netloc)
+
+    # Get the current path and derive base path (strip trailing slash)
+    current_path = str(request.url.path).rstrip("/")
+
+    # Build the base URL
+    base_url = f"{forwarded_proto}://{forwarded_host}{current_path}"
+    sse_url = f"{base_url}/sse"
+
+    html = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Zendesk MCP Server</title>
+        <style>
+            body {{
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+                max-width: 900px;
+                margin: 0 auto;
+                padding: 2rem;
+                line-height: 1.6;
+                color: #333;
+            }}
+            h1 {{ color: #1a1a1a; border-bottom: 2px solid #0066cc; padding-bottom: 0.5rem; }}
+            h2 {{ color: #444; margin-top: 2rem; }}
+            h3 {{ color: #666; margin-top: 1.5rem; margin-bottom: 0.5rem; }}
+            code {{
+                background: #f4f4f4;
+                padding: 0.2rem 0.4rem;
+                border-radius: 3px;
+                font-size: 0.9em;
+            }}
+            pre {{
+                background: #f4f4f4;
+                padding: 1rem;
+                border-radius: 5px;
+                overflow-x: auto;
+            }}
+            ul {{ margin-top: 0.5rem; }}
+            li {{ margin-bottom: 0.3rem; }}
+            .endpoint {{
+                background: #e7f3ff;
+                padding: 1rem;
+                border-radius: 5px;
+                margin: 1rem 0;
+                border-left: 4px solid #0066cc;
+            }}
+            .tools-section {{ margin-top: 2rem; }}
+        </style>
+    </head>
+    <body>
+        <h1>Zendesk MCP Server</h1>
+        <p>This is a <a href="https://modelcontextprotocol.io">Model Context Protocol (MCP)</a> server
+        that provides access to the Zendesk API for AI assistants.</p>
+
+        <h2>Endpoints</h2>
+        <div class="endpoint">
+            <strong>SSE Stream:</strong> <code>{base_url}/sse</code><br>
+            <strong>Messages:</strong> <code>{base_url}/messages</code> (POST)
+        </div>
+
+        <h2>Setup Instructions</h2>
+
+        <h3>Claude Code</h3>
+        <p>Run this command:</p>
+        <pre>claude mcp add zendesk --transport sse --url {sse_url}</pre>
+
+        <h3>Claude Desktop</h3>
+        <p>Add to <code>~/Library/Application Support/Claude/claude_desktop_config.json</code> (macOS)
+        or <code>%APPDATA%\\Claude\\claude_desktop_config.json</code> (Windows):</p>
+        <pre>{{
+  "mcpServers": {{
+    "zendesk": {{
+      "type": "sse",
+      "url": "{sse_url}"
+    }}
+  }}
+}}</pre>
+
+        <h3>VS Code with Continue Extension</h3>
+        <p>Add to your Continue config:</p>
+        <pre>{{
+  "mcpServers": [
+    {{
+      "name": "zendesk",
+      "transport": {{
+        "type": "sse",
+        "url": "{sse_url}"
+      }}
+    }}
+  ]
+}}</pre>
+
+        <h3>Cursor</h3>
+        <p>Add to your MCP settings in Cursor preferences:</p>
+        <pre>{{
+  "zendesk": {{
+    "url": "{sse_url}"
+  }}
+}}</pre>
+
+        <h2 class="tools-section">Available Tools ({len(tools)} total)</h2>
+        {tools_html}
+
+        <hr style="margin-top: 3rem;">
+        <p style="color: #666; font-size: 0.9em;">
+            <a href="https://github.com/nealrichardson/zendesk-mcp-server">GitHub Repository</a>
+        </p>
+    </body>
+    </html>
+    """
+    return HTMLResponse(content=html)
+
+
+# ASGI app for uvicorn: `uvicorn zendesk_mcp.server:app`
+app = mcp.sse_app()
 
 
 async def run_stdio() -> None:
     """Run the server with stdio transport."""
-    server = create_server()
-    async with stdio_server() as (read_stream, write_stream):
-        await server.run(read_stream, write_stream, server.create_initialization_options())
+    await mcp.run_stdio_async()
 
 
 async def run_http(host: str, port: int) -> None:
-    """Run the server with HTTP/SSE transport."""
-    from mcp.server.sse import SseServerTransport
-    from starlette.applications import Starlette
-    from starlette.routing import Route
+    """Run the server with HTTP/SSE transport using uvicorn."""
     import uvicorn
-
-    server = create_server()
-    sse = SseServerTransport("/messages")
-
-    async def handle_sse(request):
-        async with sse.connect_sse(
-            request.scope, request.receive, request._send
-        ) as streams:
-            await server.run(
-                streams[0], streams[1], server.create_initialization_options()
-            )
-
-    async def handle_messages(request):
-        await sse.handle_post_message(request.scope, request.receive, request._send)
-
-    app = Starlette(
-        debug=True,
-        routes=[
-            Route("/sse", endpoint=handle_sse),
-            Route("/messages", endpoint=handle_messages, methods=["POST"]),
-        ],
-    )
 
     config = uvicorn.Config(app, host=host, port=port, log_level="info")
     server_instance = uvicorn.Server(config)
@@ -97,9 +222,6 @@ async def run_http(host: str, port: int) -> None:
 
 def main() -> None:
     """Main entry point for the Zendesk MCP server."""
-    # Load environment variables from .env file
-    load_dotenv()
-
     parser = argparse.ArgumentParser(description="Zendesk MCP Server")
     parser.add_argument(
         "--http",

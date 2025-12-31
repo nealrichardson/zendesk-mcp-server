@@ -2,15 +2,15 @@
 
 import json
 
-from mcp.server import Server
+from mcp.server.fastmcp import FastMCP
 
 from zendesk_mcp.zendesk_client import ZendeskClient
 
 
-def register_chat_tools(server: Server, client: ZendeskClient) -> None:
+def register_chat_tools(mcp: FastMCP, client: ZendeskClient) -> None:
     """Register chat-related tools with the MCP server."""
 
-    @server.tool()
+    @mcp.tool()
     async def list_chats(
         page: int | None = None,
         per_page: int | None = None,

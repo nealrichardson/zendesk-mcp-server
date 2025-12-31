@@ -3,15 +3,15 @@
 import json
 from typing import Any
 
-from mcp.server import Server
+from mcp.server.fastmcp import FastMCP
 
 from zendesk_mcp.zendesk_client import ZendeskClient
 
 
-def register_groups_tools(server: Server, client: ZendeskClient) -> None:
+def register_groups_tools(mcp: FastMCP, client: ZendeskClient) -> None:
     """Register group-related tools with the MCP server."""
 
-    @server.tool()
+    @mcp.tool()
     async def list_groups(
         page: int | None = None,
         per_page: int | None = None,
@@ -29,7 +29,7 @@ def register_groups_tools(server: Server, client: ZendeskClient) -> None:
         except Exception as e:
             return f"Error listing groups: {e}"
 
-    @server.tool()
+    @mcp.tool()
     async def get_group(id: int) -> str:
         """Get a specific group by ID.
 
@@ -42,7 +42,7 @@ def register_groups_tools(server: Server, client: ZendeskClient) -> None:
         except Exception as e:
             return f"Error getting group: {e}"
 
-    @server.tool()
+    @mcp.tool()
     async def create_group(
         name: str,
         description: str | None = None,
@@ -63,7 +63,7 @@ def register_groups_tools(server: Server, client: ZendeskClient) -> None:
         except Exception as e:
             return f"Error creating group: {e}"
 
-    @server.tool()
+    @mcp.tool()
     async def update_group(
         id: int,
         name: str | None = None,
@@ -88,7 +88,7 @@ def register_groups_tools(server: Server, client: ZendeskClient) -> None:
         except Exception as e:
             return f"Error updating group: {e}"
 
-    @server.tool()
+    @mcp.tool()
     async def delete_group(id: int) -> str:
         """Delete a group.
 

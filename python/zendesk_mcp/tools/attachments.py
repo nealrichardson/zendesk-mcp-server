@@ -9,15 +9,15 @@ import tempfile
 from pathlib import Path
 from urllib.parse import urlparse
 
-from mcp.server import Server
+from mcp.server.fastmcp import FastMCP
 
 from zendesk_mcp.zendesk_client import ZendeskClient
 
 
-def register_attachments_tools(server: Server, client: ZendeskClient) -> None:
+def register_attachments_tools(mcp: FastMCP, client: ZendeskClient) -> None:
     """Register attachment-related tools with the MCP server."""
 
-    @server.tool()
+    @mcp.tool()
     async def get_attachment(id: int) -> str:
         """Get attachment metadata by ID, including the download URL.
 
@@ -30,7 +30,7 @@ def register_attachments_tools(server: Server, client: ZendeskClient) -> None:
         except Exception as e:
             return f"Error getting attachment: {e}"
 
-    @server.tool()
+    @mcp.tool()
     async def download_attachment(content_url: str) -> str:
         """Download attachment content as base64-encoded data.
 
@@ -53,7 +53,7 @@ def register_attachments_tools(server: Server, client: ZendeskClient) -> None:
         except Exception as e:
             return f"Error downloading attachment: {e}"
 
-    @server.tool()
+    @mcp.tool()
     async def download_attachment_to_disk(
         content_url: str,
         filename: str | None = None,
@@ -104,7 +104,7 @@ def register_attachments_tools(server: Server, client: ZendeskClient) -> None:
         except Exception as e:
             return f"Error downloading attachment to disk: {e}"
 
-    @server.tool()
+    @mcp.tool()
     async def download_and_extract_attachment(
         content_url: str,
         filename: str | None = None,

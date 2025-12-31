@@ -3,15 +3,15 @@
 import json
 from typing import Any
 
-from mcp.server import Server
+from mcp.server.fastmcp import FastMCP
 
 from zendesk_mcp.zendesk_client import ZendeskClient
 
 
-def register_views_tools(server: Server, client: ZendeskClient) -> None:
+def register_views_tools(mcp: FastMCP, client: ZendeskClient) -> None:
     """Register view-related tools with the MCP server."""
 
-    @server.tool()
+    @mcp.tool()
     async def list_views(
         page: int | None = None,
         per_page: int | None = None,
@@ -29,7 +29,7 @@ def register_views_tools(server: Server, client: ZendeskClient) -> None:
         except Exception as e:
             return f"Error listing views: {e}"
 
-    @server.tool()
+    @mcp.tool()
     async def get_view(id: int) -> str:
         """Get a specific view by ID.
 
@@ -42,7 +42,7 @@ def register_views_tools(server: Server, client: ZendeskClient) -> None:
         except Exception as e:
             return f"Error getting view: {e}"
 
-    @server.tool()
+    @mcp.tool()
     async def create_view(
         title: str,
         conditions: dict[str, Any],
@@ -65,7 +65,7 @@ def register_views_tools(server: Server, client: ZendeskClient) -> None:
         except Exception as e:
             return f"Error creating view: {e}"
 
-    @server.tool()
+    @mcp.tool()
     async def update_view(
         id: int,
         title: str | None = None,
@@ -94,7 +94,7 @@ def register_views_tools(server: Server, client: ZendeskClient) -> None:
         except Exception as e:
             return f"Error updating view: {e}"
 
-    @server.tool()
+    @mcp.tool()
     async def delete_view(id: int) -> str:
         """Delete a view.
 

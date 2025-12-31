@@ -1,14 +1,14 @@
 """Support tools for Zendesk MCP Server."""
 
-from mcp.server import Server
+from mcp.server.fastmcp import FastMCP
 
 from zendesk_mcp.zendesk_client import ZendeskClient
 
 
-def register_support_tools(server: Server, client: ZendeskClient) -> None:
+def register_support_tools(mcp: FastMCP, client: ZendeskClient) -> None:
     """Register support-related tools with the MCP server."""
 
-    @server.tool()
+    @mcp.tool()
     async def support_info() -> str:
         """Get information about Zendesk Support configuration.
 

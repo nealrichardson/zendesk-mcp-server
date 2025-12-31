@@ -3,15 +3,15 @@
 import json
 from typing import Any
 
-from mcp.server import Server
+from mcp.server.fastmcp import FastMCP
 
 from zendesk_mcp.zendesk_client import ZendeskClient
 
 
-def register_automations_tools(server: Server, client: ZendeskClient) -> None:
+def register_automations_tools(mcp: FastMCP, client: ZendeskClient) -> None:
     """Register automation-related tools with the MCP server."""
 
-    @server.tool()
+    @mcp.tool()
     async def list_automations(
         page: int | None = None,
         per_page: int | None = None,
@@ -29,7 +29,7 @@ def register_automations_tools(server: Server, client: ZendeskClient) -> None:
         except Exception as e:
             return f"Error listing automations: {e}"
 
-    @server.tool()
+    @mcp.tool()
     async def get_automation(id: int) -> str:
         """Get a specific automation by ID.
 
@@ -42,7 +42,7 @@ def register_automations_tools(server: Server, client: ZendeskClient) -> None:
         except Exception as e:
             return f"Error getting automation: {e}"
 
-    @server.tool()
+    @mcp.tool()
     async def create_automation(
         title: str,
         conditions: dict[str, Any],
@@ -71,7 +71,7 @@ def register_automations_tools(server: Server, client: ZendeskClient) -> None:
         except Exception as e:
             return f"Error creating automation: {e}"
 
-    @server.tool()
+    @mcp.tool()
     async def update_automation(
         id: int,
         title: str | None = None,
@@ -104,7 +104,7 @@ def register_automations_tools(server: Server, client: ZendeskClient) -> None:
         except Exception as e:
             return f"Error updating automation: {e}"
 
-    @server.tool()
+    @mcp.tool()
     async def delete_automation(id: int) -> str:
         """Delete an automation.
 

@@ -3,15 +3,15 @@
 import json
 from typing import Any
 
-from mcp.server import Server
+from mcp.server.fastmcp import FastMCP
 
 from zendesk_mcp.zendesk_client import ZendeskClient
 
 
-def register_tickets_tools(server: Server, client: ZendeskClient) -> None:
+def register_tickets_tools(mcp: FastMCP, client: ZendeskClient) -> None:
     """Register ticket-related tools with the MCP server."""
 
-    @server.tool()
+    @mcp.tool()
     async def list_tickets(
         page: int | None = None,
         per_page: int | None = None,
@@ -38,7 +38,7 @@ def register_tickets_tools(server: Server, client: ZendeskClient) -> None:
         except Exception as e:
             return f"Error listing tickets: {e}"
 
-    @server.tool()
+    @mcp.tool()
     async def get_ticket(id: int) -> str:
         """Get a specific ticket by ID.
 
@@ -51,7 +51,7 @@ def register_tickets_tools(server: Server, client: ZendeskClient) -> None:
         except Exception as e:
             return f"Error getting ticket: {e}"
 
-    @server.tool()
+    @mcp.tool()
     async def create_ticket(
         subject: str,
         comment: str,
@@ -101,7 +101,7 @@ def register_tickets_tools(server: Server, client: ZendeskClient) -> None:
         except Exception as e:
             return f"Error creating ticket: {e}"
 
-    @server.tool()
+    @mcp.tool()
     async def update_ticket(
         id: int,
         subject: str | None = None,
@@ -150,7 +150,7 @@ def register_tickets_tools(server: Server, client: ZendeskClient) -> None:
         except Exception as e:
             return f"Error updating ticket: {e}"
 
-    @server.tool()
+    @mcp.tool()
     async def delete_ticket(id: int) -> str:
         """Delete a ticket.
 
@@ -163,7 +163,7 @@ def register_tickets_tools(server: Server, client: ZendeskClient) -> None:
         except Exception as e:
             return f"Error deleting ticket: {e}"
 
-    @server.tool()
+    @mcp.tool()
     async def list_ticket_comments(
         ticket_id: int,
         sort_order: str | None = None,

@@ -3,15 +3,15 @@
 import json
 from typing import Any
 
-from mcp.server import Server
+from mcp.server.fastmcp import FastMCP
 
 from zendesk_mcp.zendesk_client import ZendeskClient
 
 
-def register_macros_tools(server: Server, client: ZendeskClient) -> None:
+def register_macros_tools(mcp: FastMCP, client: ZendeskClient) -> None:
     """Register macro-related tools with the MCP server."""
 
-    @server.tool()
+    @mcp.tool()
     async def list_macros(
         page: int | None = None,
         per_page: int | None = None,
@@ -29,7 +29,7 @@ def register_macros_tools(server: Server, client: ZendeskClient) -> None:
         except Exception as e:
             return f"Error listing macros: {e}"
 
-    @server.tool()
+    @mcp.tool()
     async def get_macro(id: int) -> str:
         """Get a specific macro by ID.
 
@@ -42,7 +42,7 @@ def register_macros_tools(server: Server, client: ZendeskClient) -> None:
         except Exception as e:
             return f"Error getting macro: {e}"
 
-    @server.tool()
+    @mcp.tool()
     async def create_macro(
         title: str,
         actions: list[dict[str, Any]],
@@ -65,7 +65,7 @@ def register_macros_tools(server: Server, client: ZendeskClient) -> None:
         except Exception as e:
             return f"Error creating macro: {e}"
 
-    @server.tool()
+    @mcp.tool()
     async def update_macro(
         id: int,
         title: str | None = None,
@@ -94,7 +94,7 @@ def register_macros_tools(server: Server, client: ZendeskClient) -> None:
         except Exception as e:
             return f"Error updating macro: {e}"
 
-    @server.tool()
+    @mcp.tool()
     async def delete_macro(id: int) -> str:
         """Delete a macro.
 
