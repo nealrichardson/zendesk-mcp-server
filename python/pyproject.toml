@@ -18,6 +18,9 @@ test = [
     "pytest>=8.0.0",
     "pytest-asyncio>=0.24.0",
 ]
+connect = [
+    "posit-sdk>=0.8.0",
+]
 
 [project.scripts]
 zendesk-mcp = "zendesk_mcp:main"

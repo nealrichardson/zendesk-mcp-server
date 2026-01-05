@@ -19,6 +19,21 @@ class ZendeskClient:
         self.password = os.getenv("ZENDESK_PASSWORD")
         self.oauth_token = os.getenv("ZENDESK_OAUTH_TOKEN")
 
+        # When running on Posit Connect, exchange session token for OAuth access token
+        content_session_token = os.getenv("CONNECT_CONTENT_SESSION_TOKEN")
+        if content_session_token and not self.oauth_token:
+            try:
+                from posit import connect
+                client = connect.Client()
+                credentials = client.oauth.get_content_credentials(content_session_token)
+                self.oauth_token = credentials.get("access_token")
+            except ImportError:
+                print(
+                    "Warning: posit-sdk not installed. Install with: pip install zendesk-mcp[connect]"
+                )
+            except Exception as e:
+                print(f"Warning: Failed to get OAuth token from Posit Connect: {e}")
+
         has_domain = self.domain or self.subdomain
         has_basic_auth = self.email and (self.api_token or self.password)
         has_oauth = bool(self.oauth_token)

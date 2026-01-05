@@ -38,7 +38,19 @@ write_enabled = os.getenv("ZENDESK_WRITE_ENABLED", "").lower() == "true"
 # Configure transport security for remote deployment
 # Set MCP_ALLOWED_HOSTS to a comma-separated list of allowed hosts (e.g., "example.com:*,*.example.com:*")
 # Set to "*" to allow all hosts (not recommended for production)
+# When running on Posit Connect, derive from CONNECT_SERVER if MCP_ALLOWED_HOSTS not set
 allowed_hosts_env = os.getenv("MCP_ALLOWED_HOSTS", "")
+if not allowed_hosts_env:
+    connect_server = os.getenv("CONNECT_SERVER", "")
+    if connect_server:
+        # Extract host from URL (e.g., "https://connect.example.com" -> "connect.example.com")
+        from urllib.parse import urlparse
+        parsed = urlparse(connect_server)
+        host = parsed.netloc or parsed.path  # netloc for full URLs, path for bare hostnames
+        host = host.rstrip("/")
+        if host:
+            # Include both bare host and port wildcard for flexibility
+            allowed_hosts_env = f"{host},{host}:*"
 if allowed_hosts_env:
     if allowed_hosts_env == "*":
         # Disable host validation entirely
