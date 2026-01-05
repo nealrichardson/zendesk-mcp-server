@@ -136,6 +136,25 @@ class TestCombinedAppRouting:
         assert not sse_mock.called, "/mcp should not route to SSE app"
 
     @pytest.mark.asyncio
+    async def test_routes_prefixed_mcp_to_http_app(self):
+        """Requests to proxy-prefixed /mcp paths should route to HTTP app."""
+        sse_mock = MockASGIApp("sse")
+        http_mock = MockASGIApp("http")
+
+        test_app = CombinedMCPApp(sse_mock, http_mock)
+
+        # Test various proxy-prefixed paths
+        for path in ["/zendesk/mcp", "/api/v1/mcp", "/services/zendesk/mcp"]:
+            sse_mock.called = False
+            http_mock.called = False
+
+            scope = {"type": "http", "path": path, "method": "GET"}
+            await test_app(scope, AsyncMock(), AsyncMock())
+
+            assert http_mock.called, f"{path} should route to HTTP app"
+            assert not sse_mock.called, f"{path} should not route to SSE app"
+
+    @pytest.mark.asyncio
     async def test_routes_sse_to_sse_app(self):
         """Requests to /sse should be routed to SSE app."""
         sse_mock = MockASGIApp("sse")

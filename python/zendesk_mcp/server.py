@@ -336,7 +336,8 @@ class CombinedMCPApp:
         elif scope["type"] in ("http", "websocket"):
             path = scope.get("path", "")
             # Route /mcp to streamable HTTP app, everything else to SSE app
-            if path == "/mcp":
+            # Support both direct /mcp and proxy-prefixed paths like /zendesk/mcp
+            if path == "/mcp" or path.endswith("/mcp"):
                 await self.http_app(scope, receive, send)
             else:
                 await self.sse_app(scope, receive, send)
