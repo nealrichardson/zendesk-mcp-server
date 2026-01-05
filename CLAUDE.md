@@ -8,7 +8,7 @@ This is a Model Context Protocol (MCP) server that provides comprehensive access
 
 **This repository contains two implementations:**
 - **JavaScript** (`src/`) - Original implementation, stdio transport only
-- **Python** (`python/`) - Full implementation with stdio and HTTP/SSE transports
+- **Python** (`python/`) - Full implementation with stdio, SSE, and streamable HTTP transports
 
 ## Development Commands
 
@@ -19,7 +19,9 @@ This is a Model Context Protocol (MCP) server that provides comprehensive access
 
 ### Python Server
 - `cd python && uv run python -m zendesk_mcp` - Start with stdio transport
-- `cd python && uv run python -m zendesk_mcp --http` - Start with HTTP/SSE transport
+- `cd python && uv run python -m zendesk_mcp --http` - Start with HTTP transport (both SSE and streamable HTTP)
+- `cd python && uv run python -m zendesk_mcp --http --transport sse` - SSE transport only
+- `cd python && uv run python -m zendesk_mcp --http --transport streamable-http` - Streamable HTTP only
 - `cd python && uv run python -m zendesk_mcp --http --port 3000` - Custom port
 
 ### Configuration
@@ -29,7 +31,7 @@ Both servers use the same `.env` file with these environment variables:
   - `ZENDESK_OAUTH_TOKEN` - OAuth access token (uses Bearer auth)
   - `ZENDESK_EMAIL` plus either `ZENDESK_API_TOKEN` (recommended) or `ZENDESK_PASSWORD` (uses Basic auth)
 - Write mode: `ZENDESK_WRITE_ENABLED=true` to enable create/update/delete tools (default: false, read-only)
-- Python-only: `MCP_TRANSPORT=stdio|http`, `MCP_HTTP_HOST`, `MCP_HTTP_PORT`
+- Python-only: `MCP_TRANSPORT=stdio|http`, `MCP_HTTP_TRANSPORT=sse|streamable-http|both`, `MCP_HTTP_HOST`, `MCP_HTTP_PORT`
 - Remote deployment: `MCP_ALLOWED_HOSTS` - comma-separated list of allowed hosts for HTTP mode (e.g., "example.com:*,*.example.com:*"). Set to "*" to disable host validation (not recommended for production). Required when deploying behind a proxy or with a custom domain.
 
 ### Read-Only vs Write Mode
@@ -205,14 +207,18 @@ list_ticket_comments(
 
 **Entry Point (`python/zendesk_mcp/__main__.py` and `server.py`)**
 - Loads environment variables via python-dotenv
-- Supports both stdio and HTTP/SSE transports
-- CLI argument `--http` enables HTTP mode
+- Supports stdio, SSE, and streamable HTTP transports
+- CLI argument `--http` enables HTTP mode (serves both SSE and streamable HTTP by default)
+- CLI argument `--transport` selects specific transport: `sse`, `streamable-http`, or `both`
 
 **MCP Server (`python/zendesk_mcp/server.py`)**
-- Uses the official `mcp` Python SDK
+- Uses the official `mcp` Python SDK with FastMCP
 - Creates Server instance and registers all tools
-- For HTTP mode: Uses Starlette with SSE transport
-- Endpoints: `GET /sse` (SSE stream), `POST /messages` (client messages)
+- For HTTP mode: Uses Starlette with configurable transports
+- Endpoints:
+  - `GET /mcp` - Streamable HTTP transport (recommended)
+  - `GET /sse` - SSE stream
+  - `POST /messages` - SSE messages
 
 **Zendesk Client (`python/zendesk_mcp/zendesk_client.py`)**
 - Async client using httpx

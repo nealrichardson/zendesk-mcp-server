@@ -57,7 +57,14 @@ else:
     transport_security = None
 
 # Create the FastMCP server instance
-mcp = FastMCP("zendesk-mcp", transport_security=transport_security)
+# Enable stateless_http and json_response for load-balancer-friendly deployments
+# (no sticky sessions required)
+mcp = FastMCP(
+    "zendesk-mcp",
+    transport_security=transport_security,
+    stateless_http=True,
+    json_response=True,
+)
 
 # Register all tools
 register_tickets_tools(mcp, zendesk_client, write_enabled)
@@ -130,6 +137,7 @@ async def landing_page(request: Request) -> HTMLResponse:
     # Build the base URL
     base_url = f"{forwarded_proto}://{forwarded_host}{current_path}"
     sse_url = f"{base_url}/sse"
+    mcp_url = f"{base_url}/mcp"
 
     # Mode indicator
     if write_enabled:
@@ -223,20 +231,36 @@ async def landing_page(request: Request) -> HTMLResponse:
 
         <h2>Endpoints</h2>
         <div class="endpoint">
+            <strong>Streamable HTTP:</strong> <code>{base_url}/mcp</code> (recommended)<br>
             <strong>SSE Stream:</strong> <code>{base_url}/sse</code><br>
-            <strong>Messages:</strong> <code>{base_url}/messages</code> (POST)
+            <strong>SSE Messages:</strong> <code>{base_url}/messages</code> (POST)
         </div>
 
         <h2>Setup Instructions</h2>
 
         <h3>Claude Code</h3>
-        <p>Run this command:</p>
-        <pre>claude mcp add zendesk --transport sse --url {sse_url}</pre>
+        <p>Run one of these commands:</p>
+        <pre># Streamable HTTP (recommended)
+claude mcp add zendesk --transport http --url {mcp_url}
+
+# SSE transport
+claude mcp add zendesk --transport sse --url {sse_url}</pre>
 
         <h3>Claude Desktop</h3>
         <p>Add to <code>~/Library/Application Support/Claude/claude_desktop_config.json</code> (macOS)
         or <code>%APPDATA%\\Claude\\claude_desktop_config.json</code> (Windows):</p>
-        <pre>{{
+        <pre># Streamable HTTP (recommended)
+{{
+  "mcpServers": {{
+    "zendesk": {{
+      "type": "streamable-http",
+      "url": "{mcp_url}"
+    }}
+  }}
+}}
+
+# SSE transport
+{{
   "mcpServers": {{
     "zendesk": {{
       "type": "sse",
@@ -252,8 +276,8 @@ async def landing_page(request: Request) -> HTMLResponse:
     {{
       "name": "zendesk",
       "transport": {{
-        "type": "sse",
-        "url": "{sse_url}"
+        "type": "streamable-http",
+        "url": "{mcp_url}"
       }}
     }}
   ]
@@ -263,7 +287,7 @@ async def landing_page(request: Request) -> HTMLResponse:
         <p>Add to your MCP settings in Cursor preferences:</p>
         <pre>{{
   "zendesk": {{
-    "url": "{sse_url}"
+    "url": "{mcp_url}"
   }}
 }}</pre>
 
@@ -285,8 +309,118 @@ async def landing_page(request: Request) -> HTMLResponse:
     return HTMLResponse(content=html)
 
 
-# ASGI app for uvicorn: `uvicorn zendesk_mcp.server:app`
-app = mcp.sse_app()
+# ASGI apps for uvicorn
+# - SSE transport: `uvicorn zendesk_mcp.server:sse_app`
+# - Streamable HTTP transport: `uvicorn zendesk_mcp.server:streamable_http_app`
+# - Combined (both transports): `uvicorn zendesk_mcp.server:app`
+sse_app = mcp.sse_app()
+streamable_http_app = mcp.streamable_http_app()
+
+
+# For backwards compatibility, keep CombinedMCPApp but also provide simpler alternatives
+class CombinedMCPApp:
+    """ASGI app that routes requests to SSE or streamable HTTP apps.
+
+    This preserves each app's lifespan handling, which is required for
+    the streamable HTTP transport's session manager initialization.
+    """
+
+    def __init__(self, sse_app, http_app):
+        self.sse_app = sse_app
+        self.http_app = http_app
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] == "lifespan":
+            # Handle lifespan for both apps
+            await self._handle_lifespan(scope, receive, send)
+        elif scope["type"] in ("http", "websocket"):
+            path = scope.get("path", "")
+            # Route /mcp to streamable HTTP app, everything else to SSE app
+            if path == "/mcp":
+                await self.http_app(scope, receive, send)
+            else:
+                await self.sse_app(scope, receive, send)
+
+    async def _handle_lifespan(self, scope, receive, send):
+        """Handle lifespan events for both apps."""
+        import anyio
+
+        # Run both apps' lifespans concurrently
+        message = await receive()
+        if message["type"] == "lifespan.startup":
+            try:
+                # Start both apps
+                async with anyio.create_task_group() as tg:
+                    # Create events for coordination
+                    sse_ready = anyio.Event()
+                    http_ready = anyio.Event()
+                    shutdown_event = anyio.Event()
+
+                    async def run_sse():
+                        await self.sse_app(
+                            scope,
+                            self._make_receiver("startup", shutdown_event),
+                            self._make_sender(sse_ready),
+                        )
+
+                    async def run_http():
+                        await self.http_app(
+                            scope,
+                            self._make_receiver("startup", shutdown_event),
+                            self._make_sender(http_ready),
+                        )
+
+                    tg.start_soon(run_sse)
+                    tg.start_soon(run_http)
+
+                    # Wait for both to be ready
+                    await sse_ready.wait()
+                    await http_ready.wait()
+
+                    await send({"type": "lifespan.startup.complete"})
+
+                    # Wait for shutdown
+                    while True:
+                        msg = await receive()
+                        if msg["type"] == "lifespan.shutdown":
+                            shutdown_event.set()
+                            break
+
+                    # Task group will clean up
+
+                await send({"type": "lifespan.shutdown.complete"})
+            except Exception as e:
+                await send({"type": "lifespan.startup.failed", "message": str(e)})
+
+    def _make_receiver(self, initial_type, shutdown_event):
+        """Create a receive callable for sub-app lifespan."""
+        sent_startup = False
+
+        async def receiver():
+            nonlocal sent_startup
+            if not sent_startup:
+                sent_startup = True
+                return {"type": f"lifespan.{initial_type}"}
+            await shutdown_event.wait()
+            return {"type": "lifespan.shutdown"}
+
+        return receiver
+
+    def _make_sender(self, ready_event):
+        """Create a send callable for sub-app lifespan."""
+
+        async def sender(message):
+            if message["type"] == "lifespan.startup.complete":
+                ready_event.set()
+            elif message["type"] == "lifespan.startup.failed":
+                ready_event.set()
+                raise RuntimeError(message.get("message", "Startup failed"))
+
+        return sender
+
+
+# Combined app that supports both SSE and streamable HTTP transports
+app = CombinedMCPApp(sse_app, streamable_http_app)
 
 
 async def run_stdio() -> None:
@@ -294,15 +428,33 @@ async def run_stdio() -> None:
     await mcp.run_stdio_async()
 
 
-async def run_http(host: str, port: int) -> None:
-    """Run the server with HTTP/SSE transport using uvicorn."""
+async def run_http(host: str, port: int, transport: str = "both") -> None:
+    """Run the server with HTTP transport using uvicorn.
+
+    Args:
+        host: Host to bind to
+        port: Port to bind to
+        transport: Transport mode - "sse", "streamable-http", or "both" (default)
+    """
     import uvicorn
 
-    config = uvicorn.Config(app, host=host, port=port, log_level="info")
+    if transport == "sse":
+        server_app = sse_app
+        transport_name = "SSE"
+    elif transport == "streamable-http":
+        server_app = streamable_http_app
+        transport_name = "Streamable HTTP"
+    else:
+        server_app = app
+        transport_name = "SSE + Streamable HTTP"
+
+    config = uvicorn.Config(server_app, host=host, port=port, log_level="info")
     server_instance = uvicorn.Server(config)
-    print(f"Starting Zendesk MCP server (HTTP/SSE) on http://{host}:{port}")
-    print(f"  SSE endpoint: http://{host}:{port}/sse")
-    print(f"  Messages endpoint: http://{host}:{port}/messages")
+    print(f"Starting Zendesk MCP server ({transport_name}) on http://{host}:{port}")
+    if transport in ("sse", "both"):
+        print(f"  SSE endpoint: http://{host}:{port}/sse")
+    if transport in ("streamable-http", "both"):
+        print(f"  Streamable HTTP endpoint: http://{host}:{port}/mcp")
     await server_instance.serve()
 
 
@@ -312,7 +464,13 @@ def main() -> None:
     parser.add_argument(
         "--http",
         action="store_true",
-        help="Run with HTTP/SSE transport instead of stdio",
+        help="Run with HTTP transport instead of stdio (serves both SSE and streamable HTTP)",
+    )
+    parser.add_argument(
+        "--transport",
+        choices=["sse", "streamable-http", "both"],
+        default=os.getenv("MCP_HTTP_TRANSPORT", "both"),
+        help="HTTP transport mode: sse, streamable-http, or both (default: both)",
     )
     parser.add_argument(
         "--host",
@@ -331,7 +489,7 @@ def main() -> None:
     use_http = args.http or os.getenv("MCP_TRANSPORT", "stdio").lower() == "http"
 
     if use_http:
-        asyncio.run(run_http(args.host, args.port))
+        asyncio.run(run_http(args.host, args.port, args.transport))
     else:
         print("Starting Zendesk MCP server (stdio)...", file=sys.stderr)
         asyncio.run(run_stdio())
