@@ -45,8 +45,11 @@ if not allowed_hosts_env:
     if connect_server:
         # Extract host from URL (e.g., "https://connect.example.com" -> "connect.example.com")
         from urllib.parse import urlparse
+
         parsed = urlparse(connect_server)
-        host = parsed.netloc or parsed.path  # netloc for full URLs, path for bare hostnames
+        host = (
+            parsed.netloc or parsed.path
+        )  # netloc for full URLs, path for bare hostnames
         host = host.rstrip("/")
         if host:
             # Include both bare host and port wildcard for flexibility
@@ -151,6 +154,23 @@ async def landing_page(request: Request) -> HTMLResponse:
     sse_url = f"{base_url}/sse"
     mcp_url = f"{base_url}/mcp"
 
+    # Detect if running on Posit Connect
+    is_posit_connect = bool(os.getenv("CONNECT_SERVER"))
+
+    # Get Zendesk configuration status
+    zendesk_domain = os.getenv("ZENDESK_DOMAIN")
+    zendesk_subdomain = os.getenv("ZENDESK_SUBDOMAIN")
+    if zendesk_domain:
+        # Strip https:// prefix and trailing slash if present
+        import re
+
+        clean_domain = re.sub(r"^https?://", "", zendesk_domain).rstrip("/")
+        zendesk_url = f"https://{clean_domain}"
+    elif zendesk_subdomain:
+        zendesk_url = f"https://{zendesk_subdomain}.zendesk.com"
+    else:
+        zendesk_url = None
+
     # Mode indicator
     if write_enabled:
         mode_badge = '<span class="mode-badge mode-write">Write Mode Enabled</span>'
@@ -241,42 +261,46 @@ async def landing_page(request: Request) -> HTMLResponse:
         <p>This is a <a href="https://modelcontextprotocol.io">Model Context Protocol (MCP)</a> server
         that provides access to the Zendesk API for AI assistants.</p>
 
+        {f'''<div class="endpoint">
+            <strong>Zendesk Instance:</strong> <a href="{zendesk_url}">{zendesk_url}</a>
+        </div>''' if zendesk_url else '''<div class="mode-info" style="border-left-color: #f44336;">
+            <strong>Configuration Required:</strong> No Zendesk instance configured.
+            Set either <code>ZENDESK_DOMAIN</code> (e.g., "mycompany.zendesk.com") or
+            <code>ZENDESK_SUBDOMAIN</code> (e.g., "mycompany") in your environment variables.
+        </div>'''}
+
         <h2>Endpoints</h2>
         <div class="endpoint">
-            <strong>Streamable HTTP:</strong> <code>{base_url}/mcp</code> (recommended)<br>
-            <strong>SSE Stream:</strong> <code>{base_url}/sse</code><br>
-            <strong>SSE Messages:</strong> <code>{base_url}/messages</code> (POST)
+            <strong>Streamable HTTP:</strong> <code>{mcp_url}</code> {"" if is_posit_connect else f'''(recommended)<br>
+            <strong>SSE Stream:</strong> <code>{sse_url}</code><br>
+            <strong>SSE Messages:</strong> <code>{base_url}/messages</code> (POST)'''}
         </div>
 
         <h2>Setup Instructions</h2>
 
-        <h3>Claude Code</h3>
-        <p>Run one of these commands:</p>
-        <pre># Streamable HTTP (recommended)
-claude mcp add zendesk --transport http --url {mcp_url}
+        {"" if not is_posit_connect else '''<div class="mode-info">
+            <strong>Authentication Required:</strong> This server is running on Posit Connect.
+            You must include your Posit Connect API key in requests using the header:<br>
+            <code>Authorization: Key YOUR_API_KEY</code>
+        </div>'''}
 
-# SSE transport
-claude mcp add zendesk --transport sse --url {sse_url}</pre>
+
+        <h3>Claude Code</h3>
+        <p>Run this command:</p>
+        <pre>claude mcp add --transport http zendesk {mcp_url}{"" if not is_posit_connect else f''' \\
+  --header "Authorization: Key YOUR_POSIT_CONNECT_API_KEY"'''}</pre>
 
         <h3>Claude Desktop</h3>
         <p>Add to <code>~/Library/Application Support/Claude/claude_desktop_config.json</code> (macOS)
         or <code>%APPDATA%\\Claude\\claude_desktop_config.json</code> (Windows):</p>
-        <pre># Streamable HTTP (recommended)
-{{
+        <pre>{{
   "mcpServers": {{
     "zendesk": {{
       "type": "streamable-http",
-      "url": "{mcp_url}"
-    }}
-  }}
-}}
-
-# SSE transport
-{{
-  "mcpServers": {{
-    "zendesk": {{
-      "type": "sse",
-      "url": "{sse_url}"
+      "url": "{mcp_url}"{"" if not is_posit_connect else ''',
+      "headers": {{
+        "Authorization": "Key YOUR_POSIT_CONNECT_API_KEY"
+      }}'''}
     }}
   }}
 }}</pre>
@@ -289,7 +313,10 @@ claude mcp add zendesk --transport sse --url {sse_url}</pre>
       "name": "zendesk",
       "transport": {{
         "type": "streamable-http",
-        "url": "{mcp_url}"
+        "url": "{mcp_url}"{"" if not is_posit_connect else ''',
+        "headers": {{
+          "Authorization": "Key YOUR_POSIT_CONNECT_API_KEY"
+        }}'''}
       }}
     }}
   ]
@@ -299,7 +326,10 @@ claude mcp add zendesk --transport sse --url {sse_url}</pre>
         <p>Add to your MCP settings in Cursor preferences:</p>
         <pre>{{
   "zendesk": {{
-    "url": "{mcp_url}"
+    "url": "{mcp_url}"{"" if not is_posit_connect else ''',
+    "headers": {{
+      "Authorization": "Key YOUR_POSIT_CONNECT_API_KEY"
+    }}'''}
   }}
 }}</pre>
 
