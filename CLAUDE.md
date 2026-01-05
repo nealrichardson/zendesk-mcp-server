@@ -25,7 +25,9 @@ This is a Model Context Protocol (MCP) server that provides comprehensive access
 ### Configuration
 Both servers use the same `.env` file with these environment variables:
 - Domain: Either `ZENDESK_SUBDOMAIN` (e.g., "mycompany") or `ZENDESK_DOMAIN` (e.g., "mycompany.zendesk.com")
-- Authentication: `ZENDESK_EMAIL` plus either `ZENDESK_API_TOKEN` (recommended) or `ZENDESK_PASSWORD`
+- Authentication (choose one):
+  - `ZENDESK_OAUTH_TOKEN` - OAuth access token (uses Bearer auth)
+  - `ZENDESK_EMAIL` plus either `ZENDESK_API_TOKEN` (recommended) or `ZENDESK_PASSWORD` (uses Basic auth)
 - Write mode: `ZENDESK_WRITE_ENABLED=true` to enable create/update/delete tools (default: false, read-only)
 - Python-only: `MCP_TRANSPORT=stdio|http`, `MCP_HTTP_HOST`, `MCP_HTTP_PORT`
 

@@ -17,12 +17,17 @@ class ZendeskClient:
         self.email = os.getenv("ZENDESK_EMAIL")
         self.api_token = os.getenv("ZENDESK_API_TOKEN")
         self.password = os.getenv("ZENDESK_PASSWORD")
+        self.oauth_token = os.getenv("ZENDESK_OAUTH_TOKEN")
 
-        if (not self.domain and not self.subdomain) or not self.email or (not self.api_token and not self.password):
+        has_domain = self.domain or self.subdomain
+        has_basic_auth = self.email and (self.api_token or self.password)
+        has_oauth = bool(self.oauth_token)
+
+        if not has_domain or (not has_basic_auth and not has_oauth):
             print(
                 "Warning: Zendesk credentials not found in environment variables. "
-                "Please set (ZENDESK_DOMAIN or ZENDESK_SUBDOMAIN), ZENDESK_EMAIL, "
-                "and (ZENDESK_API_TOKEN or ZENDESK_PASSWORD)."
+                "Please set (ZENDESK_DOMAIN or ZENDESK_SUBDOMAIN) and either "
+                "ZENDESK_OAUTH_TOKEN, or ZENDESK_EMAIL with (ZENDESK_API_TOKEN or ZENDESK_PASSWORD)."
             )
 
         self._client: httpx.AsyncClient | None = None
@@ -49,7 +54,9 @@ class ZendeskClient:
         return f"https://{self.subdomain}.zendesk.com/api/v2"
 
     def get_auth_header(self) -> str:
-        """Generate the Basic Auth header value."""
+        """Generate the Authorization header value."""
+        if self.oauth_token:
+            return f"Bearer {self.oauth_token}"
         if self.api_token:
             auth_string = f"{self.email}/token:{self.api_token}"
         else:
@@ -65,7 +72,10 @@ class ZendeskClient:
         params: dict[str, Any] | None = None,
     ) -> Any:
         """Make an authenticated request to the Zendesk API."""
-        if (not self.domain and not self.subdomain) or not self.email or (not self.api_token and not self.password):
+        has_domain = self.domain or self.subdomain
+        has_basic_auth = self.email and (self.api_token or self.password)
+        has_oauth = bool(self.oauth_token)
+        if not has_domain or (not has_basic_auth and not has_oauth):
             raise ValueError("Zendesk credentials not configured. Please set environment variables.")
 
         url = f"{self.get_base_url()}{endpoint}"
