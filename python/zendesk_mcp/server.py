@@ -7,6 +7,7 @@ import sys
 
 from dotenv import load_dotenv
 from mcp.server.fastmcp import FastMCP
+from mcp.server.sse import TransportSecuritySettings
 from starlette.requests import Request
 from starlette.responses import HTMLResponse
 
@@ -34,8 +35,29 @@ load_dotenv()
 # Check if write tools (create/update/delete) should be enabled
 write_enabled = os.getenv("ZENDESK_WRITE_ENABLED", "").lower() == "true"
 
+# Configure transport security for remote deployment
+# Set MCP_ALLOWED_HOSTS to a comma-separated list of allowed hosts (e.g., "example.com:*,*.example.com:*")
+# Set to "*" to allow all hosts (not recommended for production)
+allowed_hosts_env = os.getenv("MCP_ALLOWED_HOSTS", "")
+if allowed_hosts_env:
+    if allowed_hosts_env == "*":
+        # Disable host validation entirely
+        transport_security = TransportSecuritySettings(
+            enable_dns_rebinding_protection=False,
+        )
+    else:
+        # Use specified allowed hosts
+        allowed_hosts = [h.strip() for h in allowed_hosts_env.split(",") if h.strip()]
+        transport_security = TransportSecuritySettings(
+            enable_dns_rebinding_protection=True,
+            allowed_hosts=allowed_hosts,
+        )
+else:
+    # Default: let FastMCP auto-configure based on host
+    transport_security = None
+
 # Create the FastMCP server instance
-mcp = FastMCP("zendesk-mcp")
+mcp = FastMCP("zendesk-mcp", transport_security=transport_security)
 
 # Register all tools
 register_tickets_tools(mcp, zendesk_client, write_enabled)

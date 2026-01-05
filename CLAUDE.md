@@ -30,6 +30,7 @@ Both servers use the same `.env` file with these environment variables:
   - `ZENDESK_EMAIL` plus either `ZENDESK_API_TOKEN` (recommended) or `ZENDESK_PASSWORD` (uses Basic auth)
 - Write mode: `ZENDESK_WRITE_ENABLED=true` to enable create/update/delete tools (default: false, read-only)
 - Python-only: `MCP_TRANSPORT=stdio|http`, `MCP_HTTP_HOST`, `MCP_HTTP_PORT`
+- Remote deployment: `MCP_ALLOWED_HOSTS` - comma-separated list of allowed hosts for HTTP mode (e.g., "example.com:*,*.example.com:*"). Set to "*" to disable host validation (not recommended for production). Required when deploying behind a proxy or with a custom domain.
 
 ### Read-Only vs Write Mode
 
