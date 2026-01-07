@@ -81,7 +81,17 @@ mcp = FastMCP(
     json_response=True,
 )
 
-# Register all tools
+# Check if we're in remote/HTTP mode at module load time
+# This is True when running with HTTP transport (client can't access server filesystem)
+# Detected by:
+# - MCP_TRANSPORT=http env var
+# - CONNECT_SERVER env var (Posit Connect always uses HTTP)
+# Note: --http flag is handled separately in main() since it's parsed after import
+_initial_remote_mode = os.getenv("MCP_TRANSPORT", "stdio").lower() == "http" or bool(
+    os.getenv("CONNECT_SERVER")
+)
+
+# Register all tools (except attachments, which depend on transport mode)
 register_tickets_tools(mcp, zendesk_client, write_enabled)
 register_users_tools(mcp, zendesk_client, write_enabled)
 register_organizations_tools(mcp, zendesk_client, write_enabled)
@@ -95,7 +105,46 @@ register_help_center_tools(mcp, zendesk_client, write_enabled)
 register_support_tools(mcp, zendesk_client, write_enabled)
 register_talk_tools(mcp, zendesk_client, write_enabled)
 register_chat_tools(mcp, zendesk_client, write_enabled)
-register_attachments_tools(mcp, zendesk_client, write_enabled)
+
+# Track attachment tool registration state
+_attachment_tools_mode: str | None = None  # None, "stdio", or "remote"
+
+
+def _register_attachment_tools(remote_mode: bool, force: bool = False) -> None:
+    """Register attachment tools with the appropriate mode.
+
+    Args:
+        remote_mode: True for HTTP/remote tools, False for stdio tools
+        force: If True, replace existing attachment tools with new mode
+    """
+    global _attachment_tools_mode
+    target_mode = "remote" if remote_mode else "stdio"
+
+    # Skip if already registered with the same mode
+    if _attachment_tools_mode == target_mode:
+        return
+
+    # If forcing and tools were already registered, remove old attachment tools
+    if force and _attachment_tools_mode is not None:
+        # Remove existing attachment tools from the tool manager
+        tools_to_remove = [
+            name for name in mcp._tool_manager._tools if "attachment" in name.lower()
+        ]
+        for name in tools_to_remove:
+            del mcp._tool_manager._tools[name]
+
+    # Don't register if already registered and not forcing
+    if _attachment_tools_mode is not None and not force:
+        return
+
+    register_attachments_tools(mcp, zendesk_client, write_enabled, remote_mode)
+    _attachment_tools_mode = target_mode
+
+
+# Register attachment tools at import time based on detected mode
+# For ASGI deployments (uvicorn) that don't go through main(), this is the only chance
+# For CLI usage, main() may override this with --http flag
+_register_attachment_tools(remote_mode=_initial_remote_mode)
 
 
 # Landing page route
@@ -530,6 +579,10 @@ def main() -> None:
 
     # Check transport mode from env var if not specified via CLI
     use_http = args.http or os.getenv("MCP_TRANSPORT", "stdio").lower() == "http"
+
+    # Register attachment tools with the appropriate mode
+    # Use force=True if --http flag was used to override any tools registered at import time
+    _register_attachment_tools(remote_mode=use_http, force=args.http)
 
     if use_http:
         asyncio.run(run_http(args.host, args.port, args.transport))

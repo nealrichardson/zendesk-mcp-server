@@ -285,10 +285,12 @@ class ZendeskClient:
         return await self.request("GET", f"/attachments/{attachment_id}.json")
 
     async def download_attachment(self, content_url: str) -> dict[str, Any]:
-        """Download attachment content and return base64-encoded data."""
-        headers = {"Authorization": self.get_auth_header()}
+        """Download attachment content and return base64-encoded data.
 
-        response = await self.client.get(content_url, headers=headers)
+        Note: Zendesk attachment content_urls are pre-signed URLs that redirect to a CDN.
+        We don't send Authorization headers as they can interfere with CDN access.
+        """
+        response = await self.client.get(content_url, follow_redirects=True)
 
         if response.status_code >= 400:
             raise ValueError(f"Zendesk API Error: {response.status_code} - {response.text}")
