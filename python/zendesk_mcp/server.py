@@ -35,6 +35,10 @@ load_dotenv()
 # Check if write tools (create/update/delete) should be enabled
 write_enabled = os.getenv("ZENDESK_WRITE_ENABLED", "").lower() == "true"
 
+# Check if extended tools should be enabled (macros, views, triggers, automations, help center, support, talk, chat)
+# By default, only core tools (tickets, users, organizations, groups, search, attachments) are enabled
+extended_tools_enabled = os.getenv("ZENDESK_EXTENDED_TOOLS", "").lower() == "true"
+
 # Configure transport security for remote deployment
 # Set MCP_ALLOWED_HOSTS to a comma-separated list of allowed hosts (e.g., "example.com:*,*.example.com:*")
 # Set to "*" to allow all hosts (not recommended for production)
@@ -91,20 +95,23 @@ _initial_remote_mode = os.getenv("MCP_TRANSPORT", "stdio").lower() == "http" or 
     os.getenv("CONNECT_SERVER")
 )
 
-# Register all tools (except attachments, which depend on transport mode)
+# Register core tools (always enabled)
 register_tickets_tools(mcp, zendesk_client, write_enabled)
 register_users_tools(mcp, zendesk_client, write_enabled)
 register_organizations_tools(mcp, zendesk_client, write_enabled)
 register_groups_tools(mcp, zendesk_client, write_enabled)
-register_macros_tools(mcp, zendesk_client, write_enabled)
-register_views_tools(mcp, zendesk_client, write_enabled)
-register_triggers_tools(mcp, zendesk_client, write_enabled)
-register_automations_tools(mcp, zendesk_client, write_enabled)
 register_search_tools(mcp, zendesk_client, write_enabled)
-register_help_center_tools(mcp, zendesk_client, write_enabled)
-register_support_tools(mcp, zendesk_client, write_enabled)
-register_talk_tools(mcp, zendesk_client, write_enabled)
-register_chat_tools(mcp, zendesk_client, write_enabled)
+
+# Register extended tools (opt-in via ZENDESK_EXTENDED_TOOLS=true)
+if extended_tools_enabled:
+    register_macros_tools(mcp, zendesk_client, write_enabled)
+    register_views_tools(mcp, zendesk_client, write_enabled)
+    register_triggers_tools(mcp, zendesk_client, write_enabled)
+    register_automations_tools(mcp, zendesk_client, write_enabled)
+    register_help_center_tools(mcp, zendesk_client, write_enabled)
+    register_support_tools(mcp, zendesk_client, write_enabled)
+    register_talk_tools(mcp, zendesk_client, write_enabled)
+    register_chat_tools(mcp, zendesk_client, write_enabled)
 
 # Track attachment tool registration state
 _attachment_tools_mode: str | None = None  # None, "stdio", or "remote"
@@ -220,23 +227,42 @@ async def landing_page(request: Request) -> HTMLResponse:
     else:
         zendesk_url = None
 
-    # Mode indicator
+    # Mode indicators
     if write_enabled:
-        mode_badge = '<span class="mode-badge mode-write">Write Mode Enabled</span>'
-        mode_description = """
+        write_badge = '<span class="mode-badge mode-write">Write Mode</span>'
+        write_description = """
         <p>This server is running in <strong>write mode</strong>. Tools for creating, updating, and
         deleting records are available.</p>
         <p>To switch to read-only mode, set <code>ZENDESK_WRITE_ENABLED=false</code> (or remove it)
         in your environment and restart the server.</p>
         """
     else:
-        mode_badge = '<span class="mode-badge mode-readonly">Read-Only Mode</span>'
-        mode_description = """
+        write_badge = '<span class="mode-badge mode-readonly">Read-Only Mode</span>'
+        write_description = """
         <p>This server is running in <strong>read-only mode</strong>. Only tools for listing and
         retrieving data are available. Create, update, and delete operations are disabled.</p>
         <p>To enable write operations, set <code>ZENDESK_WRITE_ENABLED=true</code> in your
         environment and restart the server.</p>
         """
+
+    if extended_tools_enabled:
+        extended_badge = '<span class="mode-badge mode-write">Extended Tools</span>'
+        extended_description = """
+        <p><strong>Extended tools are enabled.</strong> Macros, views, triggers, automations,
+        help center, support info, talk, and chat tools are available.</p>
+        <p>To disable extended tools, set <code>ZENDESK_EXTENDED_TOOLS=false</code> (or remove it)
+        in your environment and restart the server.</p>
+        """
+    else:
+        extended_badge = '<span class="mode-badge mode-readonly">Core Tools Only</span>'
+        extended_description = """
+        <p>Only <strong>core tools</strong> are enabled (tickets, users, organizations, groups, search, attachments).</p>
+        <p>To enable extended tools (macros, views, triggers, automations, help center, support, talk, chat),
+        set <code>ZENDESK_EXTENDED_TOOLS=true</code> in your environment and restart the server.</p>
+        """
+
+    mode_badge = f"{write_badge} {extended_badge}"
+    mode_description = f"{write_description}{extended_description}"
 
     html = f"""
     <!DOCTYPE html>

@@ -31,6 +31,7 @@ Both servers use the same `.env` file with these environment variables:
   - `ZENDESK_OAUTH_TOKEN` - OAuth access token (uses Bearer auth)
   - `ZENDESK_EMAIL` plus either `ZENDESK_API_TOKEN` (recommended) or `ZENDESK_PASSWORD` (uses Basic auth)
 - Write mode: `ZENDESK_WRITE_ENABLED=true` to enable create/update/delete tools (default: false, read-only)
+- Extended tools (Python only): `ZENDESK_EXTENDED_TOOLS=true` to enable macros, views, triggers, automations, help center, support, talk, and chat tools (default: false, core tools only)
 - Python-only: `MCP_TRANSPORT=stdio|http`, `MCP_HTTP_TRANSPORT=sse|streamable-http|both`, `MCP_HTTP_HOST`, `MCP_HTTP_PORT`
 - Remote deployment: `MCP_ALLOWED_HOSTS` - comma-separated list of allowed hosts for HTTP mode (e.g., "example.com:*,*.example.com:*"). Set to "*" to disable host validation (not recommended for production). Required when deploying behind a proxy or with a custom domain.
 
@@ -44,6 +45,28 @@ To enable write operations, set `ZENDESK_WRITE_ENABLED=true` in your `.env` file
 - Deleting records
 
 This design allows safe exploration of Zendesk data without risk of accidental modifications.
+
+### Core vs Extended Tools (Python only)
+
+By default, the Python server only exposes **core tools**:
+- Tickets (list, get, create, update, delete)
+- Users (list, get, create, update, delete)
+- Organizations (list, get, create, update, delete)
+- Groups (list, get, create, update, delete)
+- Search
+- Attachments
+
+To enable **extended tools**, set `ZENDESK_EXTENDED_TOOLS=true` in your `.env` file. This adds:
+- Macros (list, get, create, update, delete, apply)
+- Views (list, get, create, update, delete, execute)
+- Triggers (list, get, create, update, delete)
+- Automations (list, get, create, update, delete)
+- Help Center articles (list, get, create, update, delete)
+- Support info
+- Talk statistics
+- Chat conversations
+
+This design keeps the default tool set focused on common support workflows while allowing opt-in to additional functionality.
 
 ## Architecture
 
