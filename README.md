@@ -1,145 +1,196 @@
-# Zendesk API MCP Server
+# Zendesk MCP Server
 
-    A comprehensive Model Context Protocol (MCP) server for interacting with the Zendesk API. This server provides tools and resources for managing Zendesk Support, Talk, Chat, and Guide products.
+A Model Context Protocol (MCP) server for interacting with the Zendesk API.
 
-    ## Features
+This project was originally forked from [mattcoatsworth/zendesk-mcp-server](https://github.com/mattcoatsworth/zendesk-mcp-server) and reimplemented in Python.
 
-    - Complete coverage of Zendesk API functionality
-    - Tools for managing tickets, users, organizations, and more
-    - Resources for accessing Zendesk API documentation
-    - Secure authentication with Zendesk API tokens or password
+## Features
 
-    ## Getting Started
+- Full Zendesk API coverage (Support, Talk, Chat, Guide/Help Center)
+- Supports both stdio and HTTP/SSE transports
+- Async implementation using httpx
+- Type-safe with Pydantic
 
-    ### Prerequisites
+## Installation
 
-    - Node.js 14 or higher
-    - A Zendesk account with API access
+### Run directly from GitHub (no install)
 
-    ### Installation
+```bash
+uvx --from "git+https://github.com/nealrichardson/zendesk-mcp-server" zendesk-mcp
+```
 
-    1. Clone this repository
-    2. Install dependencies:
-       ```
-       npm install
-       ```
-    3. Create a `.env` file with your Zendesk credentials:
-       ```
-       # Domain configuration (use one of the following):
-       ZENDESK_SUBDOMAIN=your-subdomain  # e.g., "mycompany" for mycompany.zendesk.com
-       # OR
-       ZENDESK_DOMAIN=your-domain        # e.g., "mycompany.zendesk.com" or "https://mycompany.zendesk.com/"
+### Local installation
 
-       # Authentication
-       ZENDESK_EMAIL=your-email@example.com
+Using uv (recommended):
 
-       # Credentials (use one of the following):
-       ZENDESK_API_TOKEN=your-api-token  # Recommended: API token authentication
-       # OR
-       ZENDESK_PASSWORD=your-password    # Password authentication
-       ```
+```bash
+uv sync
+```
 
-    ### Running the Server
+Or with pip:
 
-    Start the server:
-    ```
-    npm start
-    ```
+```bash
+pip install -e .
+```
 
-    For development with auto-restart:
-    ```
-    npm run dev
-    ```
+## Configuration
 
-    ### Testing with MCP Inspector
+Copy `.env.example` to `.env` and add your Zendesk credentials:
 
-    Test the server using the MCP Inspector:
-    ```
-    npm run inspect
-    ```
+```env
+# Domain: Either subdomain OR full domain
+ZENDESK_SUBDOMAIN=mycompany
+# OR
+ZENDESK_DOMAIN=mycompany.zendesk.com
 
-    ## Available Tools
+# Authentication
+ZENDESK_EMAIL=user@example.com
+ZENDESK_API_TOKEN=your_api_token
 
-    ### Tickets
-    - `list_tickets`: List tickets in Zendesk
-    - `get_ticket`: Get a specific ticket by ID
-    - `create_ticket`: Create a new ticket
-    - `update_ticket`: Update an existing ticket
-    - `delete_ticket`: Delete a ticket
+# Optional: Transport configuration
+MCP_TRANSPORT=stdio  # or "http"
+MCP_HTTP_HOST=0.0.0.0
+MCP_HTTP_PORT=8000
+```
 
-    ### Users
-    - `list_users`: List users in Zendesk
-    - `get_user`: Get a specific user by ID
-    - `create_user`: Create a new user
-    - `update_user`: Update an existing user
-    - `delete_user`: Delete a user
+### Posit Connect
 
-    ### Organizations
-    - `list_organizations`: List organizations in Zendesk
-    - `get_organization`: Get a specific organization by ID
-    - `create_organization`: Create a new organization
-    - `update_organization`: Update an existing organization
-    - `delete_organization`: Delete an organization
+When deployed on [Posit Connect](https://posit.co/products/enterprise/connect/), the server can use a Zendesk OAuth integration instead of API tokens. Configure a Zendesk OAuth app in Connect, and the server will automatically pick up credentials from the logged-in user's OAuth session. No `ZENDESK_API_TOKEN` or `ZENDESK_EMAIL` environment variables are needed in this case.
 
-    ### Groups
-    - `list_groups`: List agent groups in Zendesk
-    - `get_group`: Get a specific group by ID
-    - `create_group`: Create a new agent group
-    - `update_group`: Update an existing group
-    - `delete_group`: Delete a group
+## Usage
 
-    ### Macros
-    - `list_macros`: List macros in Zendesk
-    - `get_macro`: Get a specific macro by ID
-    - `create_macro`: Create a new macro
-    - `update_macro`: Update an existing macro
-    - `delete_macro`: Delete a macro
+### Stdio Mode (default)
 
-    ### Views
-    - `list_views`: List views in Zendesk
-    - `get_view`: Get a specific view by ID
-    - `create_view`: Create a new view
-    - `update_view`: Update an existing view
-    - `delete_view`: Delete a view
+```bash
+# Using uv
+uv run python -m zendesk_mcp
 
-    ### Triggers
-    - `list_triggers`: List triggers in Zendesk
-    - `get_trigger`: Get a specific trigger by ID
-    - `create_trigger`: Create a new trigger
-    - `update_trigger`: Update an existing trigger
-    - `delete_trigger`: Delete a trigger
+# Or if installed
+zendesk-mcp
+```
 
-    ### Automations
-    - `list_automations`: List automations in Zendesk
-    - `get_automation`: Get a specific automation by ID
-    - `create_automation`: Create a new automation
-    - `update_automation`: Update an existing automation
-    - `delete_automation`: Delete an automation
+### HTTP/SSE Mode
 
-    ### Search
-    - `search`: Search across Zendesk data
+```bash
+# Using uv
+uv run python -m zendesk_mcp --http
 
-    ### Help Center
-    - `list_articles`: List Help Center articles
-    - `get_article`: Get a specific Help Center article by ID
-    - `create_article`: Create a new Help Center article
-    - `update_article`: Update an existing Help Center article
-    - `delete_article`: Delete a Help Center article
+# With custom host/port
+uv run python -m zendesk_mcp --http --host 127.0.0.1 --port 3000
 
-    ### Talk
-    - `get_talk_stats`: Get Zendesk Talk statistics
+# Or if installed
+zendesk-mcp --http
+```
 
-    ### Chat
-    - `list_chats`: List Zendesk Chat conversations
+HTTP mode exposes:
+- `GET /sse` - Server-Sent Events stream
+- `POST /messages` - Client message endpoint
 
-    ### Attachments
-    - `get_attachment`: Get attachment metadata by ID, including the download URL
-    - `download_attachment`: Download attachment content as base64-encoded data
+### MCP Client Configuration
 
-    ## Available Resources
+For stdio mode, add to your MCP client config:
 
-    - `zendesk://docs/{section}`: Access documentation for different sections of the Zendesk API
+```json
+{
+  "mcpServers": {
+    "zendesk": {
+      "command": "uv",
+      "args": ["run", "--directory", "/path/to/zendesk-mcp-server", "python", "-m", "zendesk_mcp"]
+    }
+  }
+}
+```
 
-    ## License
+## Available Tools
 
-    MIT
+### Tickets
+- `list_tickets` - List tickets with pagination
+- `get_ticket` - Get ticket by ID
+- `create_ticket` - Create new ticket
+- `update_ticket` - Update existing ticket
+- `delete_ticket` - Delete ticket
+- `list_ticket_comments` - List ticket comments with filtering
+
+### Users
+- `list_users` - List users
+- `get_user` - Get user by ID
+- `create_user` - Create new user
+- `update_user` - Update existing user
+- `delete_user` - Delete user
+
+### Organizations
+- `list_organizations` - List organizations
+- `get_organization` - Get organization by ID
+- `create_organization` - Create new organization
+- `update_organization` - Update existing organization
+- `delete_organization` - Delete organization
+
+### Groups
+- `list_groups` - List agent groups
+- `get_group` - Get group by ID
+- `create_group` - Create new group
+- `update_group` - Update existing group
+- `delete_group` - Delete group
+
+### Macros
+- `list_macros` - List macros
+- `get_macro` - Get macro by ID
+- `create_macro` - Create new macro
+- `update_macro` - Update existing macro
+- `delete_macro` - Delete macro
+
+### Views
+- `list_views` - List views
+- `get_view` - Get view by ID
+- `create_view` - Create new view
+- `update_view` - Update existing view
+- `delete_view` - Delete view
+
+### Triggers
+- `list_triggers` - List triggers
+- `get_trigger` - Get trigger by ID
+- `create_trigger` - Create new trigger
+- `update_trigger` - Update existing trigger
+- `delete_trigger` - Delete trigger
+
+### Automations
+- `list_automations` - List automations
+- `get_automation` - Get automation by ID
+- `create_automation` - Create new automation
+- `update_automation` - Update existing automation
+- `delete_automation` - Delete automation
+
+### Search
+- `search` - Search across Zendesk data
+
+### Help Center
+- `list_articles` - List Help Center articles
+- `get_article` - Get article by ID
+- `create_article` - Create new article
+- `update_article` - Update existing article
+- `delete_article` - Delete article
+
+### Talk
+- `get_talk_stats` - Get Zendesk Talk statistics
+
+### Chat
+- `list_chats` - List chat conversations
+
+### Attachments
+- `get_attachment` - Get attachment metadata
+- `download_attachment` - Download attachment as base64
+- `download_attachment_to_disk` - Download attachment to temp directory
+- `download_and_extract_attachment` - Download and extract archives
+
+## Development
+
+```bash
+# Install dev dependencies
+uv sync
+
+# Run the server
+uv run python -m zendesk_mcp
+
+# Run with HTTP transport
+uv run python -m zendesk_mcp --http
+```

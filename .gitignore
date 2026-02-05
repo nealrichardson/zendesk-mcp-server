@@ -1,19 +1,15 @@
-# Dependencies
-node_modules/
-python/.venv/
-
 # Python
+.venv/
 __pycache__/
 *.py[cod]
 *.egg-info/
 dist/
 build/
+requirements.txt
+.posit/
 
 # Environment
 .env
 
 # OS
 .DS_Store
-
-python/requirements.txt
-python/.posit/ 
