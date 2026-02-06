@@ -353,17 +353,9 @@ async def landing_page(request: Request) -> HTMLResponse:
 
         <h2>Setup Instructions</h2>
 
-        {"" if not is_posit_connect else '''<div class="mode-info">
-            <strong>Authentication Required:</strong> This server is running on Posit Connect.
-            You must include your Posit Connect API key in requests using the header:<br>
-            <code>Authorization: Key YOUR_API_KEY</code>
-        </div>'''}
-
-
         <h3>Claude Code</h3>
         <p>Run this command:</p>
-        <pre>claude mcp add --transport http zendesk {mcp_url}{"" if not is_posit_connect else f''' \\
-  --header "Authorization: Key YOUR_POSIT_CONNECT_API_KEY"'''}</pre>
+        <pre>claude mcp add --transport http zendesk {mcp_url}</pre>
 
         <h3>Claude Desktop</h3>
         <p>Add to <code>~/Library/Application Support/Claude/claude_desktop_config.json</code> (macOS)
@@ -372,10 +364,7 @@ async def landing_page(request: Request) -> HTMLResponse:
   "mcpServers": {{
     "zendesk": {{
       "type": "streamable-http",
-      "url": "{mcp_url}"{"" if not is_posit_connect else ''',
-      "headers": {{
-        "Authorization": "Key YOUR_POSIT_CONNECT_API_KEY"
-      }}'''}
+      "url": "{mcp_url}"
     }}
   }}
 }}</pre>
@@ -388,10 +377,7 @@ async def landing_page(request: Request) -> HTMLResponse:
       "name": "zendesk",
       "transport": {{
         "type": "streamable-http",
-        "url": "{mcp_url}"{"" if not is_posit_connect else ''',
-        "headers": {{
-          "Authorization": "Key YOUR_POSIT_CONNECT_API_KEY"
-        }}'''}
+        "url": "{mcp_url}"
       }}
     }}
   ]
@@ -401,10 +387,7 @@ async def landing_page(request: Request) -> HTMLResponse:
         <p>Add to your MCP settings in Cursor preferences:</p>
         <pre>{{
   "zendesk": {{
-    "url": "{mcp_url}"{"" if not is_posit_connect else ''',
-    "headers": {{
-      "Authorization": "Key YOUR_POSIT_CONNECT_API_KEY"
-    }}'''}
+    "url": "{mcp_url}"
   }}
 }}</pre>
 
