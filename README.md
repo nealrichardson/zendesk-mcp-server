@@ -86,14 +86,15 @@ HTTP mode exposes:
 - `GET /sse` - Server-Sent Events stream
 - `POST /messages` - Client message endpoint
 
-### MCP Client Configuration
+### VS Code
 
-For stdio mode, add to your MCP client config:
+Use `MCP: Add Server...` from the command palette, or add this to `.vscode/mcp.json`:
 
 ```json
 {
-  "mcpServers": {
+  "servers": {
     "zendesk": {
+      "type": "stdio",
       "command": "uv",
       "args": ["run", "--directory", "/path/to/zendesk-mcp-server", "python", "-m", "zendesk_mcp"]
     }

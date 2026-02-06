@@ -369,18 +369,18 @@ async def landing_page(request: Request) -> HTMLResponse:
   }}
 }}</pre>
 
-        <h3>VS Code with Continue Extension</h3>
-        <p>Add to your Continue config:</p>
+        <h3>VS Code</h3>
+        <p>Use <code>MCP: Add Server...</code> from the command palette, or add to <code>.vscode/mcp.json</code>:</p>
         <pre>{{
-  "mcpServers": [
-    {{
-      "name": "zendesk",
-      "transport": {{
-        "type": "streamable-http",
-        "url": "{mcp_url}"
+  "servers": {{
+    "zendesk": {{
+      "type": "http",
+      "url": "{mcp_url}",
+      "headers": {{
+        "Authorization": "Key YOUR_POSIT_CONNECT_API_KEY"
       }}
     }}
-  ]
+  }}
 }}</pre>
 
         <h3>Cursor</h3>
