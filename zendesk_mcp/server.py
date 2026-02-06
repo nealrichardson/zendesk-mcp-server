@@ -375,10 +375,7 @@ async def landing_page(request: Request) -> HTMLResponse:
   "servers": {{
     "zendesk": {{
       "type": "http",
-      "url": "{mcp_url}",
-      "headers": {{
-        "Authorization": "Key YOUR_POSIT_CONNECT_API_KEY"
-      }}
+      "url": "{mcp_url}"
     }}
   }}
 }}</pre>
